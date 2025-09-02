@@ -1,0 +1,1514 @@
+// Variables de couleurs - Tons verts professionnels
+$primary-green: #1a4d3a;
+$secondary-green: #2d5e4f;
+$accent-green: #3a7060;
+$light-green: #4a8471;
+$very-light-green: #e8f5f0;
+$success-green: #22c55e;
+$warning-amber: #f59e0b;
+$error-red: #ef4444;
+$text-dark: #1f2937;
+$text-gray: #6b7280;
+$text-light: #9ca3af;
+$border-gray: #d1d5db;
+$background-gray: #f9fafb;
+$white: #ffffff;
+
+// Mixins
+@mixin card-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+@mixin card-shadow-hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+@mixin button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  line-height: 1.4;
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+@mixin container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+// Animations
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.insurance-comparator-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, $very-light-green 0%, $white 100%);
+  position: relative;
+}
+
+// Hero Section
+.hero-section {
+  background: linear-gradient(135deg, $primary-green 0%, $secondary-green 100%);
+  color: $white;
+  padding: 80px 0 60px;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><polygon fill="rgba(255,255,255,0.05)" points="0,1000 1000,800 1000,1000"/></svg>');
+    background-size: cover;
+  }
+  
+  .container {
+    @include container;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .hero-content {
+    text-align: center;
+    animation: fadeInUp 0.8s ease;
+    
+    h1 {
+      font-size: 3.5rem;
+      font-weight: 700;
+      margin: 0 0 20px;
+      letter-spacing: -0.02em;
+    }
+    
+    .hero-subtitle {
+      font-size: 1.25rem;
+      margin: 0 0 50px;
+      opacity: 0.9;
+      line-height: 1.6;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
+  
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    max-width: 600px;
+    margin: 0 auto;
+    
+    .stat-item {
+      text-align: center;
+      
+      .stat-number {
+        display: block;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: $success-green;
+        margin-bottom: 8px;
+      }
+      
+      .stat-label {
+        font-size: 0.875rem;
+        opacity: 0.8;
+      }
+    }
+  }
+}
+
+// Step Section
+.step-section {
+  padding: 60px 0;
+  opacity: 0.4;
+  transition: all 0.5s ease;
+  
+  &.active {
+    opacity: 1;
+  }
+  
+  &.completed {
+    opacity: 0.8;
+    
+    .step-number {
+      background: $success-green;
+      color: $white;
+    }
+  }
+  
+  .container {
+    @include container;
+  }
+  
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 40px;
+    
+    .step-number {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: $border-gray;
+      color: $text-gray;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      transition: all 0.3s ease;
+    }
+    
+    .step-content {
+      h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: $text-dark;
+        margin: 0 0 8px;
+      }
+      
+      p {
+        color: $text-gray;
+        font-size: 1.125rem;
+        margin: 0;
+        line-height: 1.5;
+      }
+    }
+  }
+  
+  &.active .step-number {
+    background: $primary-green;
+    color: $white;
+    transform: scale(1.1);
+  }
+  
+  .step-summary {
+    background: $very-light-green;
+    border-radius: 12px;
+    padding: 20px;
+    border-left: 4px solid $success-green;
+    
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      
+      .btn-change {
+        @include button-base;
+        background: transparent;
+        color: $primary-green;
+        border: 1px solid $primary-green;
+        padding: 8px 16px;
+        font-size: 0.875rem;
+        
+        &:hover {
+          background: $primary-green;
+          color: $white;
+        }
+      }
+    }
+  }
+}
+
+// Insurance Types Grid
+.insurance-types-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  animation: fadeInUp 0.6s ease;
+}
+
+.insurance-type-card {
+  background: $white;
+  border-radius: 16px;
+  padding: 32px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid $border-gray;
+  @include card-shadow;
+  
+  .type-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    display: block;
+  }
+  
+  h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: $text-dark;
+    margin: 0 0 12px;
+  }
+  
+  p {
+    color: $text-gray;
+    margin: 0;
+    line-height: 1.5;
+  }
+  
+  &:hover {
+    transform: translateY(-8px);
+    @include card-shadow-hover;
+    border-color: $accent-green;
+  }
+  
+  &.selected {
+    border-color: $primary-green;
+    background: linear-gradient(135deg, $primary-green 0%, $secondary-green 100%);
+    color: $white;
+    transform: translateY(-8px);
+    @include card-shadow-hover;
+    
+    h3, p {
+      color: $white;
+    }
+  }
+}
+
+// Products Section
+.products-section {
+  animation: fadeInUp 0.6s ease;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+}
+
+.product-card {
+  background: $white;
+  border-radius: 16px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid $border-gray;
+  @include card-shadow;
+  
+  .product-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    
+    .company-info {
+      display: flex;
+      gap: 12px;
+      flex: 1;
+      
+      .company-logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        object-fit: contain;
+        background: $background-gray;
+        padding: 4px;
+        flex-shrink: 0;
+      }
+      
+      div {
+        h4 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: $text-dark;
+          margin: 0 0 4px;
+        }
+        
+        .company-name {
+          color: $text-gray;
+          font-size: 0.875rem;
+          margin: 0;
+        }
+      }
+    }
+    
+    .product-rating {
+      text-align: center;
+      flex-shrink: 0;
+      
+      .stars {
+        margin-bottom: 4px;
+        
+        .star {
+          color: #fbbf24;
+          font-size: 0.875rem;
+        }
+      }
+      
+      .rating-text {
+        font-size: 0.75rem;
+        color: $text-gray;
+      }
+    }
+  }
+  
+  .product-description {
+    color: $text-gray;
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+  
+  .product-price {
+    background: $very-light-green;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 20px;
+    
+    .price-label {
+      font-size: 0.875rem;
+      color: $text-gray;
+      display: block;
+      margin-bottom: 4px;
+    }
+    
+    .price-display {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 4px;
+      
+      .price-amount {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: $primary-green;
+      }
+      
+      .price-period {
+        font-size: 0.875rem;
+        color: $text-gray;
+      }
+    }
+  }
+  
+  .product-highlights {
+    margin-bottom: 24px;
+    
+    .features, .advantages {
+      margin-bottom: 16px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+      
+      h5 {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: $text-dark;
+        margin: 0 0 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        
+        li {
+          color: $text-gray;
+          font-size: 0.875rem;
+          margin-bottom: 4px;
+          position: relative;
+          padding-left: 16px;
+          
+          &::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: $success-green;
+            font-weight: bold;
+          }
+        }
+      }
+      
+      .more-items {
+        font-size: 0.75rem;
+        color: $text-light;
+        margin: 8px 0 0;
+        font-style: italic;
+      }
+    }
+  }
+  
+  .btn-select {
+    @include button-base;
+    width: 100%;
+    background: transparent;
+    color: $primary-green;
+    border: 2px solid $primary-green;
+    
+    &:hover {
+      background: $primary-green;
+      color: $white;
+    }
+    
+    &.selected {
+      background: $success-green;
+      color: $white;
+      border-color: $success-green;
+    }
+  }
+  
+  &:hover {
+    transform: translateY(-4px);
+    @include card-shadow-hover;
+    border-color: $accent-green;
+  }
+  
+  &.selected {
+    border-color: $primary-green;
+    @include card-shadow-hover;
+    transform: translateY(-4px);
+  }
+}
+
+// Quote Form
+.quote-form-container {
+  animation: fadeInUp 0.6s ease;
+}
+
+.quote-form {
+  background: $white;
+  border-radius: 16px;
+  padding: 40px;
+  @include card-shadow;
+  
+  .form-section {
+    margin-bottom: 40px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    h3 {
+      color: $primary-green;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0 0 24px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid $very-light-green;
+      position: relative;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 60px;
+        height: 2px;
+        background: $primary-green;
+      }
+    }
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    
+    label {
+      color: $text-dark;
+      font-weight: 500;
+      margin-bottom: 8px;
+      font-size: 14px;
+      
+      &::after {
+        content: " *";
+        color: $error-red;
+      }
+    }
+    
+    .form-input,
+    .form-select {
+      padding: 14px 16px;
+      border: 2px solid $border-gray;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      background: $white;
+      
+      &:focus {
+        outline: none;
+        border-color: $primary-green;
+        box-shadow: 0 0 0 3px rgba(26, 77, 58, 0.1);
+      }
+      
+      &.error {
+        border-color: $error-red;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+      }
+      
+      &::placeholder {
+        color: $text-light;
+      }
+    }
+    
+    .error-message {
+      color: $error-red;
+      font-size: 0.75rem;
+      margin-top: 4px;
+    }
+  }
+  
+  .type-specific-form {
+    background: $background-gray;
+    border-radius: 12px;
+    padding: 24px;
+    border-left: 4px solid $accent-green;
+  }
+}
+
+// Results Section
+.results-container {
+  animation: fadeInUp 0.6s ease;
+}
+
+.main-quote-card {
+  background: linear-gradient(135deg, $primary-green 0%, $secondary-green 100%);
+  color: $white;
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 40px;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    transform: translate(50%, -50%);
+  }
+  
+  .quote-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    position: relative;
+    
+    .quote-title {
+      h3 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0 0 8px;
+      }
+      
+      .company-badge {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+    }
+    
+    .quote-validity {
+      font-size: 0.875rem;
+      opacity: 0.8;
+    }
+  }
+  
+  .quote-pricing {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    align-items: center;
+    margin-bottom: 32px;
+    
+    .price-display {
+      .monthly-price {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 8px;
+        
+        .amount {
+          font-size: 3rem;
+          font-weight: 700;
+          line-height: 1;
+        }
+        
+        .period {
+          font-size: 1.125rem;
+          opacity: 0.8;
+        }
+      }
+      
+      .annual-price {
+        font-size: 1rem;
+        opacity: 0.8;
+      }
+    }
+    
+    .deductible-info {
+      text-align: right;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 16px;
+      border-radius: 8px;
+    }
+  }
+  
+  .coverage-summary,
+  .advantages-section,
+  .exclusions-section {
+    margin-bottom: 24px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    h4 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin: 0 0 16px;
+    }
+  }
+  
+  .coverage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    
+    .coverage-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 12px 16px;
+      border-radius: 8px;
+      
+      .coverage-type {
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+      
+      .coverage-amount {
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+    }
+  }
+  
+  .advantages-list,
+  .exclusions-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+    
+    li {
+      padding: 8px 0;
+      position: relative;
+      padding-left: 20px;
+      font-size: 0.875rem;
+      
+      &::before {
+        position: absolute;
+        left: 0;
+        font-weight: bold;
+      }
+    }
+  }
+  
+  .advantages-list li::before {
+    content: "✓";
+    color: $success-green;
+  }
+  
+  .exclusions-list li::before {
+    content: "⚠";
+    color: $warning-amber;
+  }
+}
+
+// Alternative Quotes
+.alternative-quotes {
+  margin-bottom: 40px;
+  
+  h3 {
+    color: $primary-green;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 24px;
+  }
+}
+
+.quotes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 24px;
+}
+
+.quote-card {
+  background: $white;
+  border-radius: 16px;
+  padding: 24px;
+  @include card-shadow;
+  border: 2px solid $border-gray;
+  transition: all 0.3s ease;
+  
+  .quote-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    
+    .insurer-info {
+      h4 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: $text-dark;
+        margin: 0 0 4px;
+      }
+      
+      .product-name {
+        color: $text-gray;
+        font-size: 0.875rem;
+      }
+    }
+    
+    .rating {
+      text-align: right;
+      
+      .rating-value {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: $text-dark;
+        display: block;
+        margin-bottom: 4px;
+      }
+      
+      .stars {
+        .star {
+          color: #fbbf24;
+          font-size: 0.75rem;
+        }
+      }
+    }
+  }
+  
+  .quote-price {
+    background: $very-light-green;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    text-align: center;
+    
+    .monthly {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: $primary-green;
+      display: block;
+      margin-bottom: 4px;
+    }
+    
+    .annual {
+      font-size: 0.875rem;
+      color: $text-gray;
+      display: block;
+      margin-bottom: 8px;
+    }
+    
+    .deductible {
+      font-size: 0.75rem;
+      color: $text-gray;
+    }
+  }
+  
+  .quote-advantages {
+    margin-bottom: 20px;
+    
+    h5 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: $text-dark;
+      margin: 0 0 8px;
+    }
+    
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      
+      li {
+        color: $text-gray;
+        font-size: 0.875rem;
+        margin-bottom: 4px;
+        position: relative;
+        padding-left: 16px;
+        
+        &::before {
+          content: "✓";
+          position: absolute;
+          left: 0;
+          color: $success-green;
+          font-weight: bold;
+        }
+      }
+    }
+  }
+  
+  .quote-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    
+    .btn-outline {
+      @include button-base;
+      background: transparent;
+      color: $primary-green;
+      border: 2px solid $primary-green;
+      padding: 10px 16px;
+      font-size: 0.875rem;
+      
+      &:hover {
+        background: $primary-green;
+        color: $white;
+      }
+    }
+    
+    .btn-primary {
+      @include button-base;
+      background: $primary-green;
+      color: $white;
+      padding: 10px 16px;
+      font-size: 0.875rem;
+      
+      &:hover {
+        background: $secondary-green;
+        transform: translateY(-2px);
+      }
+    }
+  }
+  
+  &:hover {
+    transform: translateY(-4px);
+    @include card-shadow-hover;
+    border-color: $accent-green;
+  }
+}
+
+// Recommendations Section
+.recommendations-section {
+  margin-bottom: 40px;
+  
+  h3 {
+    color: $primary-green;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 24px;
+    text-align: center;
+  }
+}
+
+.recommendations-list {
+  display: grid;
+  gap: 16px;
+  
+  .recommendation-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    background: $white;
+    border-radius: 12px;
+    padding: 20px;
+    @include card-shadow;
+    border-left: 4px solid $accent-green;
+    
+    .recommendation-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    
+    p {
+      color: $text-dark;
+      margin: 0;
+      line-height: 1.6;
+    }
+  }
+}
+
+// Market Insights
+.market-insights-section {
+  margin-bottom: 40px;
+  
+  h3 {
+    color: $primary-green;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 24px;
+    text-align: center;
+  }
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  
+  .insight-card {
+    background: $white;
+    border-radius: 12px;
+    padding: 20px;
+    @include card-shadow;
+    border-left: 4px solid $accent-green;
+    
+    &.positive {
+      border-left-color: $success-green;
+    }
+    
+    &.negative {
+      border-left-color: $error-red;
+    }
+    
+    &.neutral {
+      border-left-color: $warning-amber;
+    }
+    
+    .insight-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      
+      .impact-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: $accent-green;
+        flex-shrink: 0;
+        
+        &.positive {
+          background: $success-green;
+        }
+        
+        &.negative {
+          background: $error-red;
+        }
+        
+        &.neutral {
+          background: $warning-amber;
+        }
+      }
+      
+      h4 {
+        color: $text-dark;
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0;
+      }
+    }
+    
+    p {
+      color: $text-gray;
+      font-size: 0.875rem;
+      margin: 0;
+      line-height: 1.5;
+    }
+  }
+}
+
+// Action Section
+.action-section {
+  padding: 40px 0;
+  background: $background-gray;
+  border-top: 1px solid $border-gray;
+  
+  .container {
+    @include container;
+  }
+  
+  .action-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    
+    .btn-primary {
+      @include button-base;
+      background: $primary-green;
+      color: $white;
+      padding: 14px 32px;
+      font-size: 1rem;
+      
+      &:hover:not(:disabled) {
+        background: $secondary-green;
+        transform: translateY(-2px);
+        @include card-shadow-hover;
+      }
+      
+      &:disabled {
+        background: $text-light;
+      }
+    }
+    
+    .btn-secondary {
+      @include button-base;
+      background: $white;
+      color: $primary-green;
+      border: 2px solid $primary-green;
+      padding: 12px 30px;
+      font-size: 1rem;
+      
+      &:hover {
+        background: $very-light-green;
+      }
+    }
+  }
+}
+
+// Progress Indicator
+.progress-indicator {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: $white;
+  border-top: 1px solid $border-gray;
+  padding: 16px 0;
+  z-index: 1000;
+  @include card-shadow;
+  
+  .container {
+    @include container;
+  }
+  
+  .progress-bar {
+    background: $border-gray;
+    height: 4px;
+    border-radius: 2px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, $primary-green 0%, $success-green 100%);
+      transition: width 0.5s ease;
+      border-radius: 2px;
+    }
+  }
+  
+  .progress-steps {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 600px;
+    margin: 0 auto;
+    
+    .progress-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      opacity: 0.4;
+      transition: all 0.3s ease;
+      
+      &.active {
+        opacity: 1;
+        
+        .step-number {
+          background: $primary-green;
+          color: $white;
+          transform: scale(1.1);
+        }
+      }
+      
+      &.completed {
+        opacity: 0.8;
+        
+        .step-number {
+          background: $success-green;
+          color: $white;
+        }
+      }
+      
+      .step-number {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: $border-gray;
+        color: $text-gray;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+      
+      .step-label {
+        font-size: 0.75rem;
+        color: $text-gray;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+// Loading States
+.loading-state,
+.error-state,
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid $border-gray;
+    border-top: 4px solid $primary-green;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+  }
+  
+  .error-icon,
+  .empty-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    display: block;
+  }
+  
+  h3 {
+    color: $text-dark;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+  
+  p {
+    color: $text-gray;
+    margin: 0 0 24px;
+    line-height: 1.5;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    @include button-base;
+  }
+  
+  .btn-primary {
+    background: $primary-green;
+    color: $white;
+    
+    &:hover {
+      background: $secondary-green;
+    }
+  }
+  
+  .btn-secondary {
+    background: transparent;
+    color: $primary-green;
+    border: 2px solid $primary-green;
+    
+    &:hover {
+      background: $very-light-green;
+    }
+  }
+}
+
+// Loading Overlay
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  
+  .loading-content {
+    background: $white;
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    @include card-shadow-hover;
+    
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid $border-gray;
+      border-top: 4px solid $primary-green;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    
+    p {
+      color: $text-dark;
+      font-weight: 500;
+      margin: 0;
+      animation: pulse 2s ease-in-out infinite;
+    }
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 60px 0 40px;
+    
+    .hero-content {
+      h1 {
+        font-size: 2.5rem;
+      }
+      
+      .hero-subtitle {
+        font-size: 1.125rem;
+      }
+    }
+    
+    .hero-stats {
+      grid-template-columns: 1fr;
+      gap: 24px;
+      
+      .stat-item {
+        .stat-number {
+          font-size: 2rem;
+        }
+      }
+    }
+  }
+  
+  .step-section {
+    padding: 40px 0;
+    
+    .step-header {
+      flex-direction: column;
+      text-align: center;
+      gap: 16px;
+      
+      .step-content {
+        h2 {
+          font-size: 1.5rem;
+        }
+        
+        p {
+          font-size: 1rem;
+        }
+      }
+    }
+    
+    .step-summary {
+      .summary-item {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+      }
+    }
+  }
+  
+  .insurance-types-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .insurance-type-card {
+    padding: 24px 20px;
+  }
+  
+  .products-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .product-card {
+    .product-header {
+      flex-direction: column;
+      gap: 16px;
+      
+      .company-info {
+        align-items: center;
+      }
+    }
+  }
+  
+  .quote-form {
+    padding: 24px 20px;
+    
+    .form-grid {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+  }
+  
+  .main-quote-card {
+    padding: 24px 20px;
+    
+    .quote-header {
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+    }
+    
+    .quote-pricing {
+      grid-template-columns: 1fr;
+      gap: 16px;
+      text-align: center;
+    }
+    
+    .coverage-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .advantages-list,
+    .exclusions-list {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  .quotes-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+    
+    .btn-primary,
+    .btn-secondary {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  
+  .progress-indicator {
+    .progress-steps {
+      .progress-step {
+        .step-label {
+          display: none;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-section {
+    .hero-content {
+      h1 {
+        font-size: 2rem;
+      }
+    }
+  }
+  
+  .container {
+    padding: 0 16px;
+  }
+  
+  .quote-form {
+    padding: 20px 16px;
+  }
+  
+  .main-quote-card {
+    padding: 20px 16px;
+    
+    .quote-pricing {
+      .price-display {
+        .monthly-price {
+          .amount {
+            font-size: 2.5rem;
+          }
+        }
+      }
+    }
+  }
+  
+  .progress-indicator {
+    padding: 12px 16px;
+    
+    .progress-steps {
+      .progress-step {
+        .step-number {
+          width: 28px;
+          height: 28px;
+          font-size: 0.75rem;
+        }
+      }
+    }
+  }
+}
+
+// Print Styles
+@media print {
+  .progress-indicator,
+  .loading-overlay,
+  .action-section {
+    display: none;
+  }
+  
+  .step-section {
+    opacity: 1 !important;
+    
+    &:not(.completed) {
+      display: none;
+    }
+  }
+  
+  .main-quote-card {
+    background: $white !important;
+    color: $text-dark !important;
+    border: 2px solid $primary-green;
+    
+    * {
+      color: $text-dark !important;
+    }
+  }
+}
