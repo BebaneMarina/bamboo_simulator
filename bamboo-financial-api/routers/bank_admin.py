@@ -1,8 +1,8 @@
 # routers/bank_admin.py - Router d'administration des banques
 from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, and_, or_, case
+from sqlalchemy import func, desc, and_, or_, case, text
 from typing import List, Optional
 from datetime import datetime, timedelta
 import uuid
@@ -10,7 +10,10 @@ import models
 import schemas
 import os
 import shutil
-import base64  # ← AJOUTEZ CETTE LIGNE
+import base64
+import sqlalchemy
+import csv
+import io
 from pathlib import Path
 from database import get_db
 
@@ -131,10 +134,6 @@ async def get_banks_admin(
             
             result_banks.append(bank_data)
 
-        print(f"Banques trouvées: {len(result_banks)}, Total: {total}")
-        if result_banks:
-            print(f"Première banque - Stats: crédit={result_banks[0]['credit_products_count']}, épargne={result_banks[0]['savings_products_count']}, simulations={result_banks[0]['total_simulations']}")
-
         return {
             "banks": result_banks,
             "total": total,
@@ -217,7 +216,6 @@ async def get_banks_stats(db: Session = Depends(get_db)):
             "top_banks": top_banks
         }
 
-        print(f"Statistiques calculées: {result}")
         return result
 
     except Exception as e:
@@ -296,7 +294,7 @@ async def get_bank_admin(bank_id: str, db: Session = Depends(get_db)):
 async def create_bank_admin(bank: schemas.BankCreate, db: Session = Depends(get_db)):
     """Crée une nouvelle banque"""
     try:
-        # Vérifier si l'ID existe déjà
+        # Vérifier si l'ID existe déjà 
         existing_bank = db.query(models.Bank).filter(models.Bank.id == bank.id).first()
         if existing_bank:
             raise HTTPException(status_code=409, detail="Une banque avec cet ID existe déjà")
@@ -649,7 +647,7 @@ async def get_bank_performance(
         print(f"Erreur get_bank_performance: {e}")
         raise HTTPException(status_code=500, detail="Erreur lors de la récupération des performances")
 
-# ==================== ENDPOINTS D'UPLOAD D'IMAGES ====================
+# ==================== ENDPOINTS D'UPLOAD D'IMAGES (CORRIGÉS) ====================
 
 @router.post("/{bank_id}/upload-logo")
 async def upload_bank_logo(
@@ -668,26 +666,26 @@ async def upload_bank_logo(
         if not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="Le fichier doit être une image")
         
-        # Valider la taille du fichier (exemple : 5MB max)
+        # Valider la taille du fichier (5MB max)
         MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
         file_content = await file.read()
         if len(file_content) > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail="Le fichier est trop volumineux (5MB max)")
         
-        # Encoder l'image en base64 pour l'URL data (optionnel)
+        # Encoder l'image en base64
         encoded_image = base64.b64encode(file_content).decode('utf-8')
         data_url = f"data:{file.content_type};base64,{encoded_image}"
         
-        # Mettre à jour la banque avec les données de l'image
-        db_bank.logo_data = file_content  # Données binaires
-        db_bank.logo_content_type = file.content_type  # Type MIME
-        db_bank.logo_url = data_url  # URL data pour affichage direct
-        db_bank.updated_at = func.now()  # Mettre à jour la date de modification
+        # STOCKER SEULEMENT L'URL DATA (pas les données binaires)
+        db_bank.logo_data = None  # Ne pas stocker les données binaires
+        db_bank.logo_content_type = file.content_type
+        db_bank.logo_url = data_url  # Stocker l'URL data complète
         
         db.commit()
+        db.refresh(db_bank)
         
         return {
-            "message": "Logo uploadé avec succès", 
+            "message": "Logo uploadé avec succès",
             "logo_url": data_url,
             "file_size": len(file_content),
             "content_type": file.content_type
@@ -698,7 +696,9 @@ async def upload_bank_logo(
     except Exception as e:
         db.rollback()
         print(f"Erreur upload_logo: {e}")
-        raise HTTPException(status_code=500, detail="Erreur lors de l'upload du logo")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erreur lors de l'upload du logo: {str(e)}")
 
 @router.get("/{bank_id}/logo")
 async def get_bank_logo(bank_id: str, db: Session = Depends(get_db)):
@@ -709,21 +709,31 @@ async def get_bank_logo(bank_id: str, db: Session = Depends(get_db)):
         if not db_bank:
             raise HTTPException(status_code=404, detail="Banque non trouvée")
         
-        if not db_bank.logo_data:
+        if not db_bank.logo_url:
             raise HTTPException(status_code=404, detail="Logo non trouvé")
         
-        # Retourner l'image avec le bon type de contenu
-        from fastapi.responses import Response
-        return Response(
-            content=db_bank.logo_data,
-            media_type=db_bank.logo_content_type or "image/png"
-        )
+        # Décoder l'URL data
+        if db_bank.logo_url.startswith('data:'):
+            try:
+                header, data = db_bank.logo_url.split(',', 1)
+                decoded_data = base64.b64decode(data)
+                content_type = header.split(';')[0].split(':')[1]
+                
+                return Response(
+                    content=decoded_data,
+                    media_type=content_type
+                )
+            except Exception as decode_error:
+                print(f"Erreur décodage URL data: {decode_error}")
+                raise HTTPException(status_code=500, detail="Erreur lors du décodage de l'image")
+        else:
+            raise HTTPException(status_code=404, detail="Format de logo non supporté")
         
     except HTTPException:
         raise
     except Exception as e:
         print(f"Erreur get_logo: {e}")
-        raise HTTPException(status_code=500, detail="Erreur lors de la récupération du logo")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la récupération du logo: {str(e)}")
 
 @router.delete("/{bank_id}/logo")
 async def delete_bank_logo(bank_id: str, db: Session = Depends(get_db)):
@@ -738,7 +748,6 @@ async def delete_bank_logo(bank_id: str, db: Session = Depends(get_db)):
         db_bank.logo_data = None
         db_bank.logo_content_type = None
         db_bank.logo_url = None
-        db_bank.updated_at = func.now()
         
         db.commit()
         
@@ -751,7 +760,8 @@ async def delete_bank_logo(bank_id: str, db: Session = Depends(get_db)):
         print(f"Erreur delete_logo: {e}")
         raise HTTPException(status_code=500, detail="Erreur lors de la suppression du logo")
 
-# Endpoint bonus : récupérer toutes les banques avec leurs logos en base64
+# ==================== ENDPOINTS POUR RÉCUPÉRER TOUTES LES BANQUES AVEC LOGOS ====================
+
 @router.get("/")
 async def get_banks_with_logos(db: Session = Depends(get_db)):
     """Récupère toutes les banques avec leurs logos"""
@@ -767,7 +777,7 @@ async def get_banks_with_logos(db: Session = Depends(get_db)):
                 "description": bank.description,
                 "website": bank.website,
                 "logo_url": bank.logo_url,  # URL data ou URL classique
-                "has_logo": bank.logo_data is not None
+                "has_logo": bank.logo_url is not None and bank.logo_url.strip() != ""
             }
             result.append(bank_data)
         
@@ -776,6 +786,7 @@ async def get_banks_with_logos(db: Session = Depends(get_db)):
     except Exception as e:
         print(f"Erreur get_banks: {e}")
         raise HTTPException(status_code=500, detail="Erreur lors de la récupération des banques")
+
 # ==================== ACTIONS RAPIDES ====================
 
 @router.patch("/{bank_id}/toggle-status")
@@ -810,10 +821,6 @@ async def export_banks(
 ):
     """Exporte la liste des banques"""
     try:
-        from fastapi.responses import StreamingResponse
-        import csv
-        import io
-
         # Récupérer toutes les banques avec statistiques
         banks = db.query(models.Bank).all()
         
@@ -856,3 +863,58 @@ async def export_banks(
     except Exception as e:
         print(f"Erreur export_banks: {e}")
         raise HTTPException(status_code=500, detail="Erreur lors de l'export")
+
+# ==================== ENDPOINTS DE DEBUG (TEMPORAIRES) ====================
+
+@router.get("/debug/test-db")
+async def test_db_connection(db: Session = Depends(get_db)):
+    """Test de connexion à la base de données"""
+    try:
+        result = db.execute(text("SELECT version()")).fetchone()
+        return {"status": "success", "db_version": result[0]}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+@router.get("/debug/environment")
+async def debug_environment():
+    """Debug de l'environnement"""
+    import os
+    import sys
+    return {
+        "python_version": sys.version,
+        "working_directory": os.getcwd(),
+        "sqlalchemy_version": sqlalchemy.__version__,
+        "environment_vars": {
+            "DATABASE_URL": os.getenv("DATABASE_URL", "non défini"),
+            "DB_HOST": os.getenv("DB_HOST", "non défini"),
+            "DB_NAME": os.getenv("DB_NAME", "non défini")
+        }
+    }
+
+@router.get("/debug/bank/{bank_id}")
+async def debug_bank_update(bank_id: str, db: Session = Depends(get_db)):
+    """Test de mise à jour d'une banque"""
+    try:
+        db_bank = db.query(models.Bank).filter(models.Bank.id == bank_id).first()
+        if not db_bank:
+            return {"error": "Banque non trouvée"}
+        
+        # Test de mise à jour simple
+        original_name = db_bank.name
+        db_bank.name = f"TEST_{original_name}"
+        db.commit()
+        
+        # Remettre le nom original
+        db_bank.name = original_name
+        db.commit()
+        
+        return {"status": "Test de mise à jour réussi"}
+        
+    except Exception as e:
+        db.rollback()
+        return {"error": f"Erreur test mise à jour: {str(e)}"}
+
+@router.get("/test-simple")
+async def test_simple():
+    """Test simple pour vérifier que le router fonctionne"""
+    return {"message": "Router fonctionne parfaitement"}

@@ -1,41 +1,33 @@
-// multi-bank-comparator.component.ts - Version complète corrigée
+// multi-bank-comparator.component.ts - Version avec stepper
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
-import { ApiService, Bank } from '../../services/api.service';
+import { Subject, Observable, forkJoin } from 'rxjs';
+import { takeUntil, switchMap, map } from 'rxjs/operators';
+import { 
+  CreditService, 
+  CreditProduct, 
+  Bank, 
+  CreditComparisonResponse,
+  BankComparison,
+  CreditSimulationRequest,
+  CreditSimulationResponse
+} from '../../services/credit.service';
 import { NotificationService } from '../../services/notification.service';
 import { AnalyticsService } from '../../services/analytics.service';
 
-interface MultiBankComparisonResult {
-  bankOffers: BankOffer[];
-  bestOffer?: BankOffer;
-  summary: {
-    totalOffers: number;
-    bestRate?: number;
-    lowestPayment?: number;
-  };
+interface ProductSimulation {
+  product: CreditProduct;
+  simulation: CreditSimulationResponse;
 }
 
-interface BankOffer {
-  bank: {
-    id: string;
-    name: string;
-    logo: string;
-  };
-  product: {
-    id: string;
-    name: string;
-    rate: number;
-    processing_time: number;
-  };
-  monthly_payment: number;
-  total_cost: number;
-  total_interest: number;
-  debt_ratio: number;
-  eligible: boolean;
+interface Step {
+  id: number;
+  label: string;
+  description: string;
+  fields: string[];
+  icon: string;
 }
 
 @Component({
@@ -47,23 +39,55 @@ interface BankOffer {
 })
 export class MultiBankComparatorComponent implements OnInit, OnDestroy {
   simulationForm!: FormGroup;
-  comparisonResults: MultiBankComparisonResult | null = null;
+  
+  availableProducts: CreditProduct[] = [];
+  compatibleProducts: CreditProduct[] = [];
+  productSimulations: ProductSimulation[] = [];
+  availableCreditTypes: { id: string; name: string; description: string; }[] = [];
+  alternativeProducts: any[] = [];
+  
+  // État du composant
   isLoading = false;
+  isLoadingProducts = false;
   hasFormError = false;
   errorMessage = '';
   
-  availableBanks: Bank[] = [];
-  selectedBanks: string[] = [];
+  // Configuration UI
   expandedOffers: Set<string> = new Set();
-  sortBy: 'rate' | 'payment' | 'time' | 'approval' = 'rate';
+  sortBy: 'rate' | 'payment' | 'time' | 'eligible' = 'payment';
+  showOnlyEligible = false;
   
-  creditTypes = [
-    { id: 'consommation', name: 'Crédit Consommation', description: 'Pour vos achats personnels' },
-    { id: 'auto', name: 'Crédit Auto', description: 'Financement véhicule' },
-    { id: 'immobilier', name: 'Crédit Immobilier', description: 'Achat ou construction' },
-    { id: 'investissement', name: 'Crédit Investissement', description: 'Projets d\'entreprise' },
-    { id: 'equipement', name: 'Crédit Équipement', description: 'Matériel professionnel' },
-    { id: 'travaux', name: 'Crédit Travaux', description: 'Rénovation et amélioration' }
+  // Stepper
+  currentStep = 1;
+  totalSteps = 3;
+  stepValidation: { [key: number]: boolean } = {
+    1: false,
+    2: false,
+    3: false
+  };
+
+  steps: Step[] = [
+    { 
+      id: 1, 
+      label: 'Votre Profil', 
+      description: 'Informations personnelles et revenus',
+      icon: 'person',
+      fields: ['clientType', 'fullName', 'phoneNumber', 'email', 'monthlyIncome', 'profession']
+    },
+    { 
+      id: 2, 
+      label: 'Votre Crédit', 
+      description: 'Détails du financement souhaité',
+      icon: 'account_balance',
+      fields: ['creditType', 'requestedAmount', 'duration', 'purpose', 'currentDebts', 'downPayment']
+    },
+    { 
+      id: 3, 
+      label: 'Validation', 
+      description: 'Vérification et comparaison',
+      icon: 'check_circle',
+      fields: []
+    }
   ];
 
   durations = [
@@ -73,14 +97,17 @@ export class MultiBankComparatorComponent implements OnInit, OnDestroy {
     { value: 24, label: '2 ans' },
     { value: 36, label: '3 ans' },
     { value: 48, label: '4 ans' },
-    { value: 60, label: '5 ans' }
+    { value: 60, label: '5 ans' },
+    { value: 84, label: '7 ans' },
+    { value: 120, label: '10 ans' },
+    { value: 240, label: '20 ans' }
   ];
 
   private destroy$ = new Subject<void>();
 
   constructor(
     private fb: FormBuilder,
-    private apiService: ApiService,
+    private creditService: CreditService,
     private notificationService: NotificationService,
     private analyticsService: AnalyticsService,
     private router: Router
@@ -88,8 +115,10 @@ export class MultiBankComparatorComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.initializeForm();
-    this.loadAvailableBanks();
+    this.loadAllProducts();
     this.trackPageView();
+    this.setupFormListeners();
+    this.setupStepValidation();
   }
 
   ngOnDestroy(): void {
@@ -97,32 +126,49 @@ export class MultiBankComparatorComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  // MÉTHODES POUR GÉRER LES PROPRIÉTÉS MANQUANTES DE L'INTERFACE BANK
-  getBankGradient(bank: Bank): string {
-    const defaultColor = '#007bff';
-    const color = bank.color || defaultColor;
-    return `linear-gradient(135deg, ${color}, ${color}90)`;
-  }
-
   private initializeForm(): void {
     this.simulationForm = this.fb.group({
       clientType: ['particulier', Validators.required],
-      fullName: ['', [Validators.required, Validators.minLength(3)]],
-      phoneNumber: ['', [Validators.required, Validators.pattern(/^(\+241|241)?[0-9]{8}$/)]],
-      email: ['', [Validators.email]],
+      fullName: ['Jean Dupont', [Validators.required, Validators.minLength(3)]], // Valeur test
+      phoneNumber: ['+24101234567', [Validators.required, Validators.pattern(/^(\+241|241)?[0-9]{8}$/)]],
+      email: [''],
       monthlyIncome: [750000, [Validators.required, Validators.min(200000)]],
       profession: [''],
       creditType: ['consommation', Validators.required],
       requestedAmount: [2000000, [Validators.required, Validators.min(100000), Validators.max(100000000)]],
-      duration: [24, [Validators.required, Validators.min(6), Validators.max(60)]],
+      duration: [24, [Validators.required, Validators.min(6), Validators.max(360)]],
       currentDebts: [0, [Validators.min(0)]],
-      purpose: ['', Validators.required]
+      downPayment: [0, [Validators.min(0)]],
+      purpose: ['Achat équipement', Validators.required] // Valeur test
     });
+  }
 
+  private setupFormListeners(): void {
     this.simulationForm.get('clientType')?.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(clientType => {
         this.updateValidationRules(clientType);
+      });
+
+    this.simulationForm.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (this.availableProducts.length > 0) {
+          this.filterCompatibleProducts();
+        }
+      });
+  }
+
+  private setupStepValidation(): void {
+    // Validation immédiate des valeurs par défaut
+    setTimeout(() => {
+      this.updateStepValidation();
+    }, 100);
+
+    this.simulationForm.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.updateStepValidation();
       });
   }
 
@@ -131,16 +177,10 @@ export class MultiBankComparatorComponent implements OnInit, OnDestroy {
     const professionControl = this.simulationForm.get('profession');
 
     if (clientType === 'entreprise') {
-      monthlyIncomeControl?.setValidators([
-        Validators.required, 
-        Validators.min(500000)
-      ]);
+      monthlyIncomeControl?.setValidators([Validators.required, Validators.min(500000)]);
       professionControl?.setValidators([Validators.required]);
     } else {
-      monthlyIncomeControl?.setValidators([
-        Validators.required, 
-        Validators.min(200000)
-      ]);
+      monthlyIncomeControl?.setValidators([Validators.required, Validators.min(200000)]);
       professionControl?.clearValidators();
     }
 
@@ -148,175 +188,627 @@ export class MultiBankComparatorComponent implements OnInit, OnDestroy {
     professionControl?.updateValueAndValidity();
   }
 
-  private loadAvailableBanks(): void {
-    this.apiService.getBanks().subscribe({
-      next: (banks) => {
-        this.availableBanks = banks;
-        this.selectedBanks = banks
-          .filter(bank => ['bgfi', 'ugb', 'bicig'].includes(bank.id))
-          .map(bank => bank.id);
-      },
-      error: (error) => {
-        console.error('Erreur chargement banques:', error);
-        this.notificationService.showError('Impossible de charger les banques disponibles');
+  private loadAllProducts(): void {
+    this.isLoadingProducts = true;
+    
+    this.creditService.getCreditProducts()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (products) => {
+          this.availableProducts = products;
+          this.extractAvailableCreditTypes(products);
+          this.filterCompatibleProducts();
+          this.isLoadingProducts = false;
+        },
+        error: (error) => {
+          console.error('Erreur chargement produits:', error);
+          this.notificationService.showError('Impossible de charger les produits de crédit');
+          this.isLoadingProducts = false;
+        }
+      });
+  }
+
+  private extractAvailableCreditTypes(products: CreditProduct[]): void {
+    // Extraire les types uniques depuis les produits en base
+    const uniqueTypes = [...new Set(products.map(p => p.type.toLowerCase()))];
+    
+    // Mapper avec des noms plus lisibles
+    const typeMapping: { [key: string]: { name: string; description: string } } = {
+      'consommation': { name: 'Crédit Consommation', description: 'Pour vos achats personnels' },
+      'auto': { name: 'Crédit Auto', description: 'Financement véhicule' },
+      'immobilier': { name: 'Crédit Immobilier', description: 'Achat ou construction' },
+      'investissement': { name: 'Crédit Investissement', description: 'Projets d\'entreprise' },
+      'equipement': { name: 'Crédit Équipement', description: 'Matériel professionnel' },
+      'travaux': { name: 'Crédit Travaux', description: 'Rénovation et amélioration' },
+      'professionnel': { name: 'Crédit Professionnel', description: 'Besoins professionnels' },
+      'tresorerie': { name: 'Crédit Trésorerie', description: 'Besoins de trésorerie' }
+    };
+
+    this.availableCreditTypes = uniqueTypes.map(type => ({
+      id: type,
+      name: typeMapping[type]?.name || this.capitalizeFirst(type),
+      description: typeMapping[type]?.description || `Crédit ${this.capitalizeFirst(type)}`
+    }));
+
+    console.log('Types de crédit disponibles:', this.availableCreditTypes);
+
+    // Définir le premier type comme valeur par défaut si elle n'existe pas
+    if (this.availableCreditTypes.length > 0) {
+      const currentType = this.simulationForm.get('creditType')?.value;
+      if (!this.availableCreditTypes.find(t => t.id === currentType)) {
+        this.simulationForm.patchValue({ creditType: this.availableCreditTypes[0].id });
+      }
+    }
+  }
+
+  private capitalizeFirst(text: string): string {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  private filterCompatibleProducts(): void {
+    if (!this.simulationForm.valid || this.availableProducts.length === 0) {
+      this.compatibleProducts = [];
+      return;
+    }
+
+    const formData = this.simulationForm.value;
+    
+    this.compatibleProducts = this.availableProducts.filter(product => {
+      const typeMatch = product.type.toLowerCase().includes(formData.creditType.toLowerCase());
+      const amountMatch = formData.requestedAmount >= product.min_amount && 
+                          formData.requestedAmount <= product.max_amount;
+      const durationMatch = formData.duration >= product.min_duration_months && 
+                           formData.duration <= product.max_duration_months;
+      const activeMatch = product.is_active && product.bank.is_active;
+      
+      return typeMatch && amountMatch && durationMatch && activeMatch;
+    });
+
+    // Si aucun produit compatible, chercher des alternatives
+    if (this.compatibleProducts.length === 0) {
+      this.findAlternativeProducts(formData);
+    }
+  }
+
+  private findAlternativeProducts(formData: any): void {
+    const alternatives: any[] = [];
+    
+    // Chercher des produits du même type avec des montants différents
+    const sameTypeProducts = this.availableProducts.filter(product => 
+      product.type.toLowerCase().includes(formData.creditType.toLowerCase()) &&
+      product.is_active && product.bank.is_active
+    );
+
+    if (sameTypeProducts.length > 0) {
+      // Produits avec montants plus élevés
+      const higherAmountProducts = sameTypeProducts.filter(p => 
+        formData.requestedAmount < p.min_amount
+      ).slice(0, 2);
+      
+      // Produits avec montants plus bas  
+      const lowerAmountProducts = sameTypeProducts.filter(p => 
+        formData.requestedAmount > p.max_amount
+      ).slice(0, 2);
+
+      higherAmountProducts.forEach(product => {
+        alternatives.push({
+          type: 'amount_too_low',
+          product,
+          suggestion: `Montant minimum: ${this.formatCurrency(product.min_amount)}`,
+          adjustedAmount: product.min_amount
+        });
+      });
+
+      lowerAmountProducts.forEach(product => {
+        alternatives.push({
+          type: 'amount_too_high',
+          product,
+          suggestion: `Montant maximum: ${this.formatCurrency(product.max_amount)}`,
+          adjustedAmount: product.max_amount
+        });
+      });
+    }
+
+    // Chercher des produits avec des durées différentes
+    const sameCriteriaDifferentDuration = this.availableProducts.filter(product => 
+      product.type.toLowerCase().includes(formData.creditType.toLowerCase()) &&
+      formData.requestedAmount >= product.min_amount && 
+      formData.requestedAmount <= product.max_amount &&
+      product.is_active && product.bank.is_active &&
+      (formData.duration < product.min_duration_months || formData.duration > product.max_duration_months)
+    ).slice(0, 2);
+
+    sameCriteriaDifferentDuration.forEach(product => {
+      if (formData.duration < product.min_duration_months) {
+        alternatives.push({
+          type: 'duration_too_short',
+          product,
+          suggestion: `Durée minimum: ${product.min_duration_months} mois`,
+          adjustedDuration: product.min_duration_months
+        });
+      } else {
+        alternatives.push({
+          type: 'duration_too_long',
+          product,
+          suggestion: `Durée maximum: ${product.max_duration_months} mois`,
+          adjustedDuration: product.max_duration_months
+        });
+      }
+    });
+
+    // Stocker les alternatives pour l'affichage
+    this.alternativeProducts = alternatives.slice(0, 3); // Limiter à 3 suggestions
+  }
+
+  applyAlternative(alternative: any): void {
+    const updates: any = {};
+    
+    if (alternative.adjustedAmount) {
+      updates.requestedAmount = alternative.adjustedAmount;
+    }
+    
+    if (alternative.adjustedDuration) {
+      updates.duration = alternative.adjustedDuration;
+    }
+    
+    this.simulationForm.patchValue(updates);
+    this.notificationService.showSuccess('Paramètres ajustés selon la suggestion');
+  }
+
+  private updateStepValidation(): void {
+    this.steps.forEach(step => {
+      this.stepValidation[step.id] = this.isStepValid(step.id);
+    });
+    
+    // Debug logs
+    console.log('Step validation updated:', this.stepValidation);
+    console.log('Current step:', this.currentStep);
+    console.log('Can proceed to next:', this.canProceedToNext);
+  }
+
+  private isStepValid(stepId: number): boolean {
+    const step = this.steps.find(s => s.id === stepId);
+    if (!step) return false;
+
+    if (stepId === 3) {
+      return this.stepValidation[1] && this.stepValidation[2];
+    }
+
+    // Champs requis par étape
+    const requiredFieldsByStep: { [key: number]: string[] } = {
+      1: ['clientType', 'fullName', 'phoneNumber', 'monthlyIncome'],
+      2: ['creditType', 'requestedAmount', 'duration', 'purpose']
+    };
+
+    const requiredFields = requiredFieldsByStep[stepId] || [];
+    const clientType = this.simulationForm.get('clientType')?.value;
+    
+    // Ajouter profession si entreprise pour l'étape 1
+    if (stepId === 1 && clientType === 'entreprise') {
+      requiredFields.push('profession');
+    }
+
+    // Vérifier uniquement les champs requis pour cette étape
+    const isValid = requiredFields.every(fieldName => {
+      const control = this.simulationForm.get(fieldName);
+      if (!control) return true;
+
+      const value = control.value;
+      const hasValue = value !== null && value !== undefined && value !== '';
+      
+      // Pour les champs numériques, vérifier que la valeur est > 0
+      if (['monthlyIncome', 'requestedAmount', 'duration'].includes(fieldName)) {
+        const numValue = Number(value);
+        const isValidNumber = !isNaN(numValue) && numValue > 0;
+        
+        console.log(`Field ${fieldName}:`, {
+          value,
+          numValue,
+          isValidNumber,
+          hasValue,
+          isValid: hasValue && isValidNumber
+        });
+        
+        return hasValue && isValidNumber;
+      }
+      
+      // Pour les autres champs, vérifier simplement la présence
+      console.log(`Field ${fieldName}:`, {
+        value,
+        hasValue,
+        isValid: hasValue
+      });
+      
+      return hasValue;
+    });
+
+    console.log(`Step ${stepId} validation result:`, isValid, 'Required fields:', requiredFields);
+    return isValid;
+  }
+
+  private validateCurrentStep(): void {
+    const currentStepConfig = this.steps.find(s => s.id === this.currentStep);
+    if (!currentStepConfig) return;
+
+    currentStepConfig.fields.forEach(fieldName => {
+      const control = this.simulationForm.get(fieldName);
+      if (control) {
+        control.markAsTouched();
       }
     });
   }
 
-  hasError(controlName: string): boolean {
-    const control = this.simulationForm.get(controlName);
-    return !!(control?.errors && control?.touched);
-  }
-
-  isBankSelected(bankId: string): boolean {
-    return this.selectedBanks.includes(bankId);
-  }
-
-  toggleBankSelection(bankId: string): void {
-    const index = this.selectedBanks.indexOf(bankId);
-    if (index > -1) {
-      if (this.selectedBanks.length > 1) {
-        this.selectedBanks.splice(index, 1);
+  // Méthodes de navigation du stepper
+  nextStep(): void {
+    console.log('Attempting to go to next step from:', this.currentStep);
+    console.log('Can proceed:', this.canProceedToNext);
+    console.log('Step validations:', this.stepValidation);
+    
+    if (this.currentStep < this.totalSteps) {
+      if (this.canGoToNextStep()) {
+        this.currentStep++;
+        this.scrollToTop();
+        this.trackStepNavigation('next', this.currentStep);
+        console.log('Moved to step:', this.currentStep);
       } else {
-        this.notificationService.showWarning('Vous devez sélectionner au moins une banque');
+        this.validateCurrentStep();
+        this.notificationService.showError('Veuillez compléter tous les champs requis avant de continuer');
+        console.log('Cannot proceed - validation failed');
       }
-    } else {
-      this.selectedBanks.push(bankId);
     }
   }
 
-  toggleSelectAll(): void {
-    if (this.allBanksSelected) {
-      this.selectedBanks = ['bgfi'];
-    } else {
-      this.selectedBanks = this.availableBanks.map(bank => bank.id);
+  previousStep(): void {
+    if (this.currentStep > 1) {
+      this.currentStep--;
+      this.scrollToTop();
+      this.trackStepNavigation('previous', this.currentStep);
     }
   }
 
-  get allBanksSelected(): boolean {
-    return this.selectedBanks.length === this.availableBanks.length;
+  goToStep(stepNumber: number): void {
+    if (stepNumber >= 1 && stepNumber <= this.totalSteps) {
+      if (stepNumber <= this.currentStep || this.canGoToStep(stepNumber)) {
+        this.currentStep = stepNumber;
+        this.scrollToTop();
+        this.trackStepNavigation('jump', stepNumber);
+      }
+    }
+  }
+
+  private canGoToNextStep(): boolean {
+    return this.stepValidation[this.currentStep];
+  }
+
+  canGoToStep(stepNumber: number): boolean {
+    for (let i = 1; i < stepNumber; i++) {
+      if (!this.stepValidation[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private scrollToTop(): void {
+    const stepperElement = document.querySelector('.form-stepper');
+    if (stepperElement) {
+      stepperElement.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
   }
 
   onSubmit(): void {
-    if (this.simulationForm.invalid || this.selectedBanks.length === 0) {
+    if (this.currentStep < this.totalSteps) {
+      if (this.canGoToNextStep()) {
+        this.nextStep();
+      } else {
+        this.validateCurrentStep();
+        this.notificationService.showError('Veuillez compléter tous les champs requis');
+      }
+      return;
+    }
+
+    if (this.simulationForm.invalid) {
       this.markFormGroupTouched(this.simulationForm);
       this.notificationService.showError('Veuillez corriger les erreurs du formulaire');
       return;
     }
 
+    if (this.compatibleProducts.length === 0) {
+      this.notificationService.showWarning('Aucun produit compatible trouvé avec vos critères');
+      return;
+    }
+
     this.isLoading = true;
     this.hasFormError = false;
-    this.comparisonResults = null;
+    this.productSimulations = [];
 
     const formData = this.simulationForm.value;
 
-    this.apiService.compareCreditOffers({
-      credit_type: formData.creditType,
-      amount: formData.requestedAmount,
-      duration: formData.duration,
-      monthly_income: formData.monthlyIncome,
-      current_debts: formData.currentDebts || 0
-    }).subscribe({
-      next: (result) => {
-        const filteredComparisons = result.comparisons.filter(
-          (comp: any) => this.selectedBanks.includes(comp.bank.id)
-        );
+    const simulationRequests = this.compatibleProducts.map(product => {
+      const request: CreditSimulationRequest = {
+        credit_product_id: product.id,
+        requested_amount: formData.requestedAmount,
+        duration_months: formData.duration,
+        monthly_income: formData.monthlyIncome,
+        current_debts: formData.currentDebts || 0,
+        down_payment: formData.downPayment || 0,
+        session_id: this.generateSessionId()
+      };
 
-        this.comparisonResults = {
-          bankOffers: filteredComparisons,
-          bestOffer: result.best_rate,
-          summary: {
-            totalOffers: filteredComparisons.length,
-            bestRate: result.best_rate?.product?.rate,
-            lowestPayment: result.lowest_payment?.monthly_payment
-          }
-        };
-
-        this.isLoading = false;
-        this.notificationService.showSuccess('Comparaison terminée avec succès !');
-        
-        this.analyticsService.trackEvent('multi_bank_simulation_completed', {
-          offers_received: filteredComparisons.length,
-          best_rate: result.best_rate?.product?.rate,
-          best_bank: result.best_rate?.bank?.id
-        });
-
-        setTimeout(() => {
-          this.scrollToResults();
-        }, 100);
-      },
-      error: (error) => {
-        console.error('Erreur simulation:', error);
-        this.isLoading = false;
-        this.hasFormError = true;
-        this.errorMessage = error.error?.detail || 'Une erreur est survenue lors de la comparaison';
-        this.notificationService.showError(this.errorMessage);
-      }
+      return this.creditService.simulateCreditLight(request).pipe(
+        map(simulation => ({ product, simulation }))
+      );
     });
+
+    forkJoin(simulationRequests)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (results) => {
+          this.productSimulations = results;
+          this.isLoading = false;
+          
+          const eligibleCount = results.filter(r => r.simulation.eligible).length;
+          this.notificationService.showSuccess(
+            `Simulation terminée ! ${eligibleCount}/${results.length} offres éligibles`
+          );
+
+          this.analyticsService.trackEvent('multi_product_simulation_completed', {
+            total_products: results.length,
+            eligible_products: eligibleCount,
+            credit_type: formData.creditType,
+            amount: formData.requestedAmount
+          });
+
+          setTimeout(() => this.scrollToResults(), 100);
+        },
+        error: (error) => {
+          console.error('Erreur simulation:', error);
+          this.isLoading = false;
+          this.hasFormError = true;
+          this.errorMessage = error.message || 'Erreur lors des simulations';
+          this.notificationService.showError(this.errorMessage);
+        }
+      });
   }
 
-  setSortBy(sortType: 'rate' | 'payment' | 'time' | 'approval'): void {
+  getSortedSimulations(): ProductSimulation[] {
+    if (!this.productSimulations.length) return [];
+
+    let filtered = this.showOnlyEligible 
+      ? this.productSimulations.filter(sim => sim.simulation.eligible)
+      : this.productSimulations;
+
+    switch (this.sortBy) {
+      case 'rate':
+        return filtered.sort((a, b) => a.simulation.applied_rate - b.simulation.applied_rate);
+      case 'payment':
+        return filtered.sort((a, b) => a.simulation.monthly_payment - b.simulation.monthly_payment);
+      case 'time':
+        return filtered.sort((a, b) => a.product.processing_time_hours - b.product.processing_time_hours);
+      case 'eligible':
+        return filtered.sort((a, b) => (b.simulation.eligible ? 1 : 0) - (a.simulation.eligible ? 1 : 0));
+      default:
+        return filtered;
+    }
+  }
+
+  toggleOfferDetails(productId: string): void {
+    if (this.expandedOffers.has(productId)) {
+      this.expandedOffers.delete(productId);
+    } else {
+      this.expandedOffers.add(productId);
+    }
+  }
+
+  isOfferExpanded(productId: string): boolean {
+    return this.expandedOffers.has(productId);
+  }
+
+  setSortBy(sortType: 'rate' | 'payment' | 'time' | 'eligible'): void {
     this.sortBy = sortType;
   }
 
-  getSortedOffers(): BankOffer[] {
-    if (!this.comparisonResults) return [];
-    
-    const offers = [...this.comparisonResults.bankOffers];
-    
-    switch (this.sortBy) {
-      case 'rate':
-        return offers.sort((a, b) => a.product.rate - b.product.rate);
-      case 'payment':
-        return offers.sort((a, b) => a.monthly_payment - b.monthly_payment);
-      case 'time':
-        return offers.sort((a, b) => a.product.processing_time - b.product.processing_time);
-      case 'approval':
-        return offers.sort((a, b) => (b.eligible ? 1 : 0) - (a.eligible ? 1 : 0));
-      default:
-        return offers;
-    }
+  toggleEligibilityFilter(): void {
+    this.showOnlyEligible = !this.showOnlyEligible;
   }
 
-  toggleOfferDetails(bankId: string): void {
-    if (this.expandedOffers.has(bankId)) {
-      this.expandedOffers.delete(bankId);
-    } else {
-      this.expandedOffers.add(bankId);
-    }
-  }
+  applyToOffer(simulation: ProductSimulation): void {
+    const product = simulation.product;
+    const sim = simulation.simulation;
 
-  isOfferExpanded(bankId: string): boolean {
-    return this.expandedOffers.has(bankId);
-  }
-
-  applyToOffer(offer: BankOffer): void {
-    this.analyticsService.trackEvent('bank_offer_application_started', {
-      bank_id: offer.bank.id,
-      bank_name: offer.bank.name,
-      interest_rate: offer.product.rate,
-      monthly_payment: offer.monthly_payment
+    this.analyticsService.trackEvent('product_application_started', {
+      product_id: product.id,
+      bank_id: product.bank_id,
+      bank_name: product.bank.name,
+      interest_rate: sim.applied_rate,
+      monthly_payment: sim.monthly_payment,
+      eligible: sim.eligible
     });
 
     this.notificationService.showSuccess(
-      `Demande transmise à ${offer.bank.name}. Vous serez contacté sous 48h.`
+      `Demande transmise à ${product.bank.name}. Vous serez contacté sous ${this.getProcessingTimeText(product.processing_time_hours)}.`
     );
   }
 
+  // Getters pour le template
+  get currentStepConfig(): Step | undefined {
+    return this.steps.find(s => s.id === this.currentStep);
+  }
+
+  get progressPercentage(): number {
+    return (this.currentStep / this.totalSteps) * 100;
+  }
+
+  get canProceedToNext(): boolean {
+    return this.canGoToNextStep();
+  }
+
+  get canGoBack(): boolean {
+    return this.currentStep > 1;
+  }
+
+  get isLastStep(): boolean {
+    return this.currentStep === this.totalSteps;
+  }
+
+  get completedSteps(): number {
+    return Object.values(this.stepValidation).filter(valid => valid).length;
+  }
+
+  get isFormValid(): boolean {
+    return this.simulationForm.valid && this.compatibleProducts.length > 0;
+  }
+
+  get compatibleProductsCount(): number {
+    return this.compatibleProducts.length;
+  }
+
+  get totalProductsCount(): number {
+    return this.availableProducts.length;
+  }
+
+  get eligibleSimulationsCount(): number {
+    return this.productSimulations.filter(sim => sim.simulation.eligible).length;
+  }
+
+  get selectedCreditTypeName(): string {
+    const selectedId = this.simulationForm.get('creditType')?.value;
+    return this.availableCreditTypes.find(t => t.id === selectedId)?.name || '';
+  }
+
+  get selectedDurationLabel(): string {
+    const selectedValue = this.simulationForm.get('duration')?.value;
+    return this.durations.find(d => d.value === selectedValue)?.label || '';
+  }
+
+  get clientTypeLabel(): string {
+    return this.simulationForm.get('clientType')?.value === 'particulier' ? 'Particulier' : 'Entreprise';
+  }
+
+  get bestOfferSavings(): number {
+    if (this.productSimulations.length < 2) return 0;
+    
+    const sortedByPayment = [...this.productSimulations]
+      .sort((a, b) => a.simulation.monthly_payment - b.simulation.monthly_payment);
+    
+    return sortedByPayment[sortedByPayment.length - 1].simulation.total_cost - 
+           sortedByPayment[0].simulation.total_cost;
+  }
+
+  getStepClass(stepId: number): string {
+    if (stepId < this.currentStep && this.stepValidation[stepId]) {
+      return 'completed';
+    } else if (stepId === this.currentStep) {
+      return 'active';
+    }
+    return '';
+  }
+
+  getConnectorClass(stepId: number): string {
+    if (stepId < this.currentStep && this.stepValidation[stepId] && this.stepValidation[stepId + 1]) {
+      return 'completed';
+    } else if (stepId === this.currentStep - 1 && this.stepValidation[stepId]) {
+      return 'active';
+    }
+    return '';
+  }
+
+  // Méthodes utilitaires
+  hasError(controlName: string): boolean {
+    const control = this.simulationForm.get(controlName);
+    return !!(control?.errors && control?.touched);
+  }
+
+  getErrorMessage(controlName: string): string {
+    const control = this.simulationForm.get(controlName);
+    if (!control?.errors) return '';
+
+    const errors = control.errors;
+    if (errors['required']) return 'Ce champ est requis';
+    if (errors['email']) return 'Format d\'email invalide';
+    if (errors['minlength']) return `Minimum ${errors['minlength'].requiredLength} caractères`;
+    if (errors['min']) return `Valeur minimum: ${errors['min'].min}`;
+    if (errors['max']) return `Valeur maximum: ${errors['max'].max}`;
+    if (errors['pattern']) return 'Format invalide';
+    
+    return 'Valeur invalide';
+  }
+
+  formatCurrency(amount: number): string {
+    return this.creditService.formatCurrency(amount);
+  }
+
+  formatPercent(value: number): string {
+    return this.creditService.formatPercent(value);
+  }
+
+  getProcessingTimeText(hours: number): string {
+    return this.creditService.formatProcessingTime(hours);
+  }
+
+  getEligibilityClass(eligible: boolean): string {
+    return eligible ? 'eligible' : 'not-eligible';
+  }
+
+  getEligibilityText(eligible: boolean): string {
+    return eligible ? 'Éligible' : 'Non éligible';
+  }
+
+  getBankColor(bank: Bank): string {
+    const colors: { [key: string]: string } = {
+      'bgfi': '#1e40af',
+      'ugb': '#dc2626', 
+      'bicig': '#059669',
+      'ecobank': '#ea580c',
+      'cbao': '#7c3aed'
+    };
+    return colors[bank.id] || '#6b7280';
+  }
+
+  resetForm(): void {
+    this.simulationForm.reset({
+      clientType: 'particulier',
+      monthlyIncome: 750000,
+      creditType: 'consommation',
+      requestedAmount: 2000000,
+      duration: 24,
+      currentDebts: 0,
+      downPayment: 0
+    });
+    this.productSimulations = [];
+    this.compatibleProducts = [];
+    this.hasFormError = false;
+    this.expandedOffers.clear();
+    this.showOnlyEligible = false;
+    this.resetStepper();
+  }
+
+  private resetStepper(): void {
+    this.currentStep = 1;
+    this.stepValidation = { 1: false, 2: false, 3: false };
+    this.updateStepValidation();
+  }
+
   saveComparison(): void {
-    if (!this.comparisonResults) return;
+    if (!this.productSimulations.length) return;
     this.notificationService.showSuccess('Comparaison sauvegardée avec succès');
   }
 
   exportToPDF(): void {
-    if (!this.comparisonResults) return;
+    if (!this.productSimulations.length) return;
     this.notificationService.showSuccess('Export PDF généré avec succès');
   }
 
   shareComparison(): void {
-    if (!this.comparisonResults) return;
+    if (!this.productSimulations.length) return;
 
-    const shareText = `Comparaison de crédits - Meilleur taux: ${this.comparisonResults.bestOffer?.product.rate}% chez ${this.comparisonResults.bestOffer?.bank.name}`;
+    const bestOffer = this.getSortedSimulations()[0];
+    const shareText = bestOffer 
+      ? `Comparaison de crédits - Meilleur taux: ${bestOffer.simulation.applied_rate}% chez ${bestOffer.product.bank.name}`
+      : 'Comparaison de crédits - Bamboo';
     
     if (navigator.share) {
       navigator.share({
@@ -329,71 +821,6 @@ export class MultiBankComparatorComponent implements OnInit, OnDestroy {
         this.notificationService.showSuccess('Lien copié dans le presse-papier');
       });
     }
-  }
-
-  resetForm(): void {
-    this.simulationForm.reset({
-      clientType: 'particulier',
-      monthlyIncome: 750000,
-      creditType: 'consommation',
-      requestedAmount: 2000000,
-      duration: 24
-    });
-    this.comparisonResults = null;
-    this.hasFormError = false;
-    this.selectedBanks = ['bgfi', 'ugb', 'bicig'];
-  }
-
-  getEligibilityClass(status: boolean): string {
-    return status ? 'eligible' : 'not-eligible';
-  }
-
-  getEligibilityText(status: boolean): string {
-    return status ? 'Éligible' : 'Non éligible';
-  }
-
-  formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XAF',
-      minimumFractionDigits: 0
-    }).format(amount);
-  }
-
-  formatPercent(value: number): string {
-    return `${value.toFixed(1)}%`;
-  }
-
-  getProcessingTimeText(hours: number): string {
-    if (hours <= 24) return `${hours}h`;
-    const days = Math.ceil(hours / 24);
-    return `${days} jour${days > 1 ? 's' : ''}`;
-  }
-
-  hasValidationError(controlName: string, errorType: string = ''): boolean {
-    const control = this.simulationForm.get(controlName);
-    if (!control) return false;
-    
-    if (errorType) {
-      return !!(control.errors?.[errorType] && control.touched);
-    }
-    return !!(control.errors && control.touched);
-  }
-
-  getErrorMessage(controlName: string): string {
-    const control = this.simulationForm.get(controlName);
-    if (!control?.errors) return '';
-
-    const errors = control.errors;
-    
-    if (errors['required']) return 'Ce champ est requis';
-    if (errors['email']) return 'Format d\'email invalide';
-    if (errors['minlength']) return `Minimum ${errors['minlength'].requiredLength} caractères`;
-    if (errors['min']) return `Valeur minimum: ${errors['min'].min}`;
-    if (errors['max']) return `Valeur maximum: ${errors['max'].max}`;
-    if (errors['pattern']) return 'Format invalide';
-    
-    return 'Valeur invalide';
   }
 
   private markFormGroupTouched(formGroup: FormGroup): void {
@@ -416,73 +843,54 @@ export class MultiBankComparatorComponent implements OnInit, OnDestroy {
   private trackPageView(): void {
     this.analyticsService.trackPageView('multi_bank_comparator', {
       page_title: 'Comparateur Multi-Banques',
-      available_banks: this.availableBanks.length
+      available_products: this.availableProducts.length
     });
   }
 
-  get isFormValid(): boolean {
-    return this.simulationForm.valid && this.selectedBanks.length > 0;
+  private trackStepNavigation(action: 'next' | 'previous' | 'jump', stepNumber: number): void {
+    this.analyticsService.trackEvent('step_navigation', {
+      action,
+      from_step: action === 'next' ? stepNumber - 1 : action === 'previous' ? stepNumber + 1 : this.currentStep,
+      to_step: stepNumber,
+      form_completion: this.progressPercentage
+    });
   }
 
-  get selectedBanksCount(): number {
-    return this.selectedBanks.length;
+  // Méthodes de debug temporaires
+  testApiConnection(): void {
+    console.log('Testing API connection...');
+    this.creditService.testConnection().subscribe({
+      next: (response) => {
+        console.log('API Connection successful:', response);
+        this.notificationService.showSuccess('API connectée avec succès');
+      },
+      error: (error) => {
+        console.error('API Connection failed:', error);
+        this.notificationService.showError('Échec de connexion API: ' + error.message);
+      }
+    });
   }
 
-getBankColor(bank: Bank): string {
-  const colors: { [key: string]: string } = {
-    'bgfi': '#1e40af',
-    'ugb': '#dc2626', 
-    'bicig': '#059669',
-    'ecobank': '#ea580c',
-    'cbao': '#7c3aed'
-  };
-  return colors[bank.id] || '#6b7280';
-}
-
-getBankShortName(bank: Bank): string {
-  const shortNames: { [key: string]: string } = {
-    'bgfi': 'BGFI',
-    'ugb': 'UGB',
-    'bicig': 'BICIG',
-    'ecobank': 'ECO',
-    'cbao': 'CBAO'
-  };
-  return shortNames[bank.id] || bank.name.substring(0, 4).toUpperCase();
-}
-
-getBankMarketShare(bank: Bank): number {
-  const marketShares: { [key: string]: number } = {
-    'bgfi': 28.5,
-    'ugb': 22.3,
-    'bicig': 18.7,
-    'ecobank': 15.2,
-    'cbao': 12.1
-  };
-  return marketShares[bank.id] || 0;
-}
-
-getBankProcessingTime(bank: Bank): string {
-  const processingTimes: { [key: string]: number } = {
-    'bgfi': 24,
-    'ugb': 48,
-    'bicig': 36,
-    'ecobank': 72,
-    'cbao': 48
-  };
-  const hours = processingTimes[bank.id] || 72;
-  return this.getProcessingTimeText(hours);
-}
-  get totalBanksCount(): number {
-    return this.availableBanks.length;
-  }
-
-  get bestOfferSavings(): number {
-    if (!this.comparisonResults || this.comparisonResults.bankOffers.length < 2) return 0;
+  forceValidateStep(): void {
+    console.log('Force validating current step...');
+    console.log('Form values:', this.simulationForm.value);
+    console.log('Form valid:', this.simulationForm.valid);
+    console.log('Form errors:', this.simulationForm.errors);
     
-    const offers = this.comparisonResults.bankOffers;
-    const sortedOffers = offers.sort((a, b) => a.total_cost - b.total_cost);
-    
-    if (sortedOffers.length < 2) return 0;
-    return sortedOffers[sortedOffers.length - 1].total_cost - sortedOffers[0].total_cost;
+    // Afficher les erreurs de chaque champ
+    Object.keys(this.simulationForm.controls).forEach(key => {
+      const control = this.simulationForm.get(key);
+      if (control?.errors) {
+        console.log(`${key} errors:`, control.errors);
+      }
+    });
+
+    // Force update validation
+    this.updateStepValidation();
+    this.notificationService.showSuccess('Validation forcée - vérifiez la console');
+  }
+
+  private generateSessionId(): string {
+    return `sim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 }

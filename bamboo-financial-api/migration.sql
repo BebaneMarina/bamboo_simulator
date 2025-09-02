@@ -1,8 +1,7 @@
--- Migration pour ajouter les colonnes d'image à la table banks
-ALTER TABLE banks ADD COLUMN IF NOT EXISTS logo_data BYTEA;
-ALTER TABLE banks ADD COLUMN IF NOT EXISTS logo_content_type VARCHAR(100);
-ALTER TABLE banks ADD COLUMN IF NOT EXISTS logo_filename VARCHAR(255);
-ALTER TABLE banks ADD COLUMN IF NOT EXISTS logo_file_size INTEGER;
+-- Ajouter les colonnes manquantes
+ALTER TABLE insurance_companies 
+ADD COLUMN logo_data TEXT,
+ADD COLUMN logo_content_type VARCHAR(100);
 
--- Index pour optimiser les requêtes d'images
-CREATE INDEX IF NOT EXISTS idx_banks_logo ON banks(id) WHERE logo_data IS NOT NULL;
+-- Si d'autres colonnes manquent, ajoutez-les aussi
+-- Regardez votre modèle InsuranceCompany pour voir toutes les colonnes définies
