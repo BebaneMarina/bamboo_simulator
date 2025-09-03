@@ -1,0 +1,465 @@
+// src/app/user/application-history.component.scss
+.applications-container {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+  padding: 2rem 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+
+  .header-content {
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #2c3e50;
+      margin: 0;
+    }
+
+    p {
+      color: #7f8c8d;
+      margin: 0.5rem 0 0 0;
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+
+    .filter-select {
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+    }
+
+    .dropdown {
+      position: relative;
+
+      .dropdown-toggle {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+
+        &:hover {
+          background: #2980b9;
+        }
+      }
+
+      .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        min-width: 200px;
+        z-index: 1000;
+        display: none;
+
+        &.show {
+          display: block;
+        }
+
+        .dropdown-item {
+          display: block;
+          padding: 0.75rem 1rem;
+          color: #2c3e50;
+          text-decoration: none;
+
+          &:hover {
+            background: #f8f9fa;
+          }
+        }
+      }
+
+      &:hover .dropdown-menu {
+        display: block;
+      }
+    }
+  }
+}
+
+.filters-section {
+  margin-bottom: 2rem;
+
+  .filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+
+    .filter-btn {
+      padding: 0.5rem 1rem;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+
+      &:hover {
+        background: #f8f9fa;
+      }
+
+      &.active {
+        background: #3498db;
+        color: white;
+        border-color: #3498db;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+
+        &.pending { background: #f39c12; }
+        &.under_review { background: #3498db; }
+        &.approved { background: #27ae60; }
+        &.rejected { background: #e74c3c; }
+      }
+    }
+  }
+}
+
+.loading-state {
+  text-align: center;
+  padding: 3rem;
+  color: #7f8c8d;
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #7f8c8d;
+
+  .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  h2 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+  }
+
+  .empty-actions {
+    margin-top: 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+.applications-list {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.application-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+
+  &.credit { border-left: 4px solid #3498db; }
+  &.savings { border-left: 4px solid #27ae60; }
+  &.insurance { border-left: 4px solid #e67e22; }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+
+    .application-type {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+
+      .type-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+
+        &.credit { background: #ebf5fb; }
+        &.savings { background: #eafaf1; }
+        &.insurance { background: #fef5e7; }
+      }
+
+      .type-info {
+        .application-title {
+          margin: 0;
+          color: #2c3e50;
+          font-size: 1.1rem;
+        }
+
+        .bank-name {
+          margin: 0.25rem 0 0 0;
+          color: #7f8c8d;
+          font-size: 0.9rem;
+        }
+      }
+    }
+
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 500;
+
+      &.pending { background: #fff3e0; color: #f39c12; }
+      &.under_review { background: #ebf5fb; color: #3498db; }
+      &.approved { background: #eafaf1; color: #27ae60; }
+      &.rejected { background: #fdedec; color: #e74c3c; }
+      &.cancelled { background: #f8f9fa; color: #7f8c8d; }
+    }
+  }
+
+  .card-content {
+    margin-bottom: 1.5rem;
+
+    .application-details {
+      margin-bottom: 1.5rem;
+
+      .detail-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+
+        .detail-item {
+          label {
+            display: block;
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            margin-bottom: 0.25rem;
+          }
+
+          .value {
+            font-weight: 500;
+            color: #2c3e50;
+          }
+        }
+      }
+    }
+
+    .application-timeline {
+      display: flex;
+      gap: 2rem;
+
+      .timeline-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        .timeline-dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          flex-shrink: 0;
+
+          &.submitted { background: #27ae60; }
+          &.pending { background: #f39c12; }
+          &.under_review { background: #3498db; }
+          &.approved { background: #27ae60; }
+          &.rejected { background: #e74c3c; }
+        }
+
+        .timeline-content {
+          .timeline-label {
+            display: block;
+            font-size: 0.8rem;
+            color: #7f8c8d;
+          }
+
+          .timeline-date {
+            font-size: 0.8rem;
+            color: #2c3e50;
+            font-weight: 500;
+          }
+        }
+      }
+    }
+  }
+
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+
+    .application-id {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 0.5rem;
+
+      .action-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid #ddd;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+
+        &:hover {
+          background: #f8f9fa;
+        }
+
+        &.primary {
+          background: #3498db;
+          color: white;
+          border-color: #3498db;
+
+          &:hover {
+            background: #2980b9;
+          }
+        }
+
+        &.danger {
+          background: #e74c3c;
+          color: white;
+          border-color: #e74c3c;
+
+          &:hover {
+            background: #c0392b;
+          }
+        }
+      }
+    }
+  }
+
+  .progress-indicator {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+
+    .progress-bar {
+      height: 100%;
+      background: #eee;
+
+      .progress-fill {
+        height: 100%;
+        background: #27ae60;
+        transition: width 0.3s ease;
+      }
+    }
+  }
+}
+
+.btn-primary {
+  background: #3498db;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  text-decoration: none;
+  display: inline-block;
+  cursor: pointer;
+  font-weight: 500;
+
+  &:hover {
+    background: #2980b9;
+  }
+}
+
+.btn-outline {
+  background: white;
+  color: #3498db;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid #3498db;
+  border-radius: 4px;
+  text-decoration: none;
+  display: inline-block;
+  cursor: pointer;
+  font-weight: 500;
+
+  &:hover {
+    background: #f8f9fa;
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+
+    .header-actions {
+      flex-direction: column;
+    }
+  }
+
+  .application-card {
+    .card-header {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .card-footer {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: stretch;
+    }
+
+    .application-timeline {
+      flex-direction: column;
+      gap: 1rem;
+    }
+  }
+}

@@ -1,8 +1,9 @@
-// src/app/app.routes.ts - Version corrigée
+// src/app/app.routes.ts - Version avec authentification utilisateur
 import { Routes } from '@angular/router';
 import { AdminAuthGuard } from './guards/admin-auth.guard';
 import { SuperAdminGuard } from './guards/super-admin.guard';
 import { PermissionGuard } from './guards/permission.guard';
+import { UserAuthGuard } from './guards/user-auth.guard';
 import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 
 export const routes: Routes = [
@@ -21,6 +22,122 @@ export const routes: Routes = [
     data: { title: 'Accueil Simulateurs' }
   },
 
+  // ============= AUTHENTIFICATION UTILISATEUR =============
+  {
+    path: 'auth',
+    children: [
+      {
+        path: '',
+        redirectTo: 'login',
+        pathMatch: 'full'
+      },
+      {
+        path: 'login',
+        loadComponent: () => import('./components/users/user-login.component').then(c => c.LoginComponent),
+        data: { title: 'Connexion / Inscription' }
+      }
+    ]
+  },
+
+  // ============= ESPACE UTILISATEUR CONNECTÉ =============
+  {
+    path: 'dashboard',
+    loadComponent: () => import('./components/users/user-dashboard.component').then(c => c.UserDashboardComponent),
+    canActivate: [UserAuthGuard],
+    data: { title: 'Mon Espace Personnel' }
+  },
+
+  {
+    path: 'profile',
+    loadComponent: () => import('./components/users/user-profile.component').then(c => c.UserProfileComponent),
+    canActivate: [UserAuthGuard],
+    data: { title: 'Mon Profil' }
+  },
+
+  {
+    path: 'settings',
+    loadComponent: () => import('./components/users/user-settings.component').then(c => c.UserSettingsComponent),
+    canActivate: [UserAuthGuard],
+    data: { title: 'Mes Paramètres' }
+  },
+
+  {
+    path: 'simulations',
+    canActivate: [UserAuthGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./components/users/simulation-history.component').then(c => c.SimulationHistoryComponent),
+        data: { title: 'Mes Simulations' }
+      },
+      {
+        path: 'credit/:id',
+        loadComponent: () => import('./components/users/simulation-detail.component').then(c => c.SimulationDetailComponent),
+        data: { title: 'Détails Simulation Crédit' }
+      },
+      {
+        path: 'savings/:id',
+        loadComponent: () => import('./components/users/simulation-detail.component').then(c => c.SimulationDetailComponent),
+        data: { title: 'Détails Simulation Épargne' }
+      },
+      {
+        path: 'insurance/:id',
+        loadComponent: () => import('./components/users/simulation-detail.component').then(c => c.SimulationDetailComponent),
+        data: { title: 'Détails Simulation Assurance' }
+      }
+    ]
+  },
+
+  {
+    path: 'applications',
+    canActivate: [UserAuthGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./components/users/application-history.component').then(c => c.ApplicationHistoryComponent),
+        data: { title: 'Mes Demandes' }
+      },
+      {
+        path: 'credit/:id',
+        loadComponent: () => import('./components/users/application-detail.component').then(c => c.ApplicationDetailComponent),
+        data: { title: 'Détails Demande Crédit' }
+      },
+      {
+        path: 'savings/:id',
+        loadComponent: () => import('./components/users/application-detail.component').then(c => c.ApplicationDetailComponent),
+        data: { title: 'Détails Demande Épargne' }
+      },
+      {
+        path: 'insurance/:id',
+        loadComponent: () => import('./components/users/application-detail.component').then(c => c.ApplicationDetailComponent),
+        data: { title: 'Détails Demande Assurance' }
+      }
+    ]
+  },
+
+  {
+    path: 'apply',
+    canActivate: [UserAuthGuard],
+    children: [
+      {
+        path: 'credit',
+        loadComponent: () => import('./components/users/credit-application.component').then(c => c.CreditApplicationComponent),
+        data: { title: 'Demande de Crédit' }
+      },
+      /*{
+        path: 'savings',
+        loadComponent: () => import('./user/savings-application.component').then(c => c.SavingsApplicationComponent),
+        data: { title: 'Demande d\'Épargne' }
+      },*/
+      /*{
+        path: 'insurance',
+        loadComponent: () => import('./user/insurance-application.component').then(c => c.InsuranceApplicationComponent),
+        data: { title: 'Demande d\'Assurance' }
+      }*/
+    ]
+  },
+
+  // ============= SIMULATEURS (PUBLIC + SAUVEGARDE SI CONNECTÉ) =============
   // Simulateurs de crédit
   {
     path: 'borrowing-capacity',
@@ -72,9 +189,9 @@ export const routes: Routes = [
     data: { title: 'Détails du Suivi' }
   },
 
-  // ============= AUTHENTIFICATION ADMIN =============
+  // ============= AUTHENTIFICATION ADMIN (SÉPARÉE) =============
   {
-    path: 'auth',
+    path: 'admin/auth',
     children: [
       {
         path: '',
@@ -259,7 +376,7 @@ export const routes: Routes = [
         ]
       },
 
-      // Simulations
+      // Simulations (admin)
       {
         path: 'simulations',
         canActivate: [PermissionGuard],
@@ -271,7 +388,7 @@ export const routes: Routes = [
         loadComponent: () => import('./admin/simulation-list.component').then(c => c.SimulationsListComponent)
       },
 
-      // Demandes clients
+      // Demandes clients (admin)
       {
         path: 'applications',
         canActivate: [PermissionGuard],
@@ -282,6 +399,7 @@ export const routes: Routes = [
         },
         loadComponent: () => import('./admin/application-list.component').then(c => c.ApplicationsListComponent)
       },
+
 
       // Audit et logs (Super Admin uniquement)
       {
