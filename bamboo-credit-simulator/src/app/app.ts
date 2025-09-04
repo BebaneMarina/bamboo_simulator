@@ -1,8 +1,8 @@
-// src/app/app.component.ts (Standalone)
+// src/app/app.component.ts (Standalone) - Version corrigée
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
-import { HeaderComponent } from './components/header/header.component';
+import { HeaderComponent } from './components/header/header.component'; // Utiliser le nouveau HeaderComponent standalone
 import { FooterComponent } from './components/footer/footer.component';
 import { NotificationComponent } from './components/notifications/notification.component';
 import { LoadingSpinnerComponent } from './components/loading-spinner/loading-spinner.component';
@@ -14,7 +14,7 @@ import { LoadingService } from './services/loading.service';
   imports: [
     CommonModule,
     RouterOutlet,
-    HeaderComponent,
+    HeaderComponent, // Assurez-vous que ce composant est standalone
     FooterComponent,
     NotificationComponent,
     LoadingSpinnerComponent
@@ -35,7 +35,36 @@ import { LoadingService } from './services/loading.service';
       <app-notification></app-notification>
     </div>
   `,
-  styleUrls: ['./app.scss']
+  styles: [`
+    .app-container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-content {
+      flex: 1;
+      position: relative;
+      transition: opacity 0.3s ease;
+    }
+
+    .main-content.loading {
+      opacity: 0.7;
+    }
+
+    .global-loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 9999;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  `]
 })
 export class AppComponent {
   isLoading$: typeof this.loadingService.loading$;

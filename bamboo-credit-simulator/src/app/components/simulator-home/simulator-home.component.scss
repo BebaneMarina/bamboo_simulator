@@ -749,6 +749,409 @@ $font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sa
   }
 }
 
+// Styles à ajouter à simulator-home.component.scss après la section stats-section
+
+// Section d'invitation à l'authentification
+.auth-invitation-section {
+  padding: 6rem 0;
+  background: linear-gradient(135deg, $gray-50 0%, $very-light-green 100%);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 60%;
+    height: 200%;
+    background: radial-gradient(circle, rgba($primary-green, 0.05) 0%, transparent 70%);
+    transform: rotate(15deg);
+  }
+
+  .auth-invitation-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr;
+      gap: 3rem;
+      text-align: center;
+    }
+  }
+
+  .invitation-text {
+    h2 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: $gray-900;
+      margin: 0 0 1.5rem;
+      line-height: 1.2;
+
+      @media (min-width: 768px) {
+        font-size: 2.5rem;
+      }
+
+      @media (max-width: 640px) {
+        font-size: 1.875rem;
+      }
+    }
+
+    p {
+      font-size: 1.125rem;
+      color: $gray-600;
+      margin: 0 0 2.5rem;
+      line-height: 1.6;
+
+      @media (max-width: 640px) {
+        font-size: 1rem;
+      }
+    }
+
+    .benefits-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+
+      .benefit-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem;
+        background: $white;
+        border-radius: 0.75rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+
+        @media (max-width: 640px) {
+          justify-content: center;
+          text-align: center;
+        }
+
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba($primary-green, 0.15);
+
+          .benefit-icon {
+            transform: scale(1.1);
+          }
+        }
+
+        .benefit-icon {
+          font-size: 1.5rem;
+          background: linear-gradient(135deg, $primary-green 0%, $accent-green 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          transition: transform 0.3s ease;
+          flex-shrink: 0;
+        }
+
+        span {
+          font-weight: 600;
+          color: $gray-700;
+          font-size: 0.875rem;
+
+          @media (min-width: 768px) {
+            font-size: 1rem;
+          }
+        }
+      }
+    }
+
+    .auth-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+
+      @media (max-width: 640px) {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    .btn-auth-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, $primary-green 0%, $secondary-green 100%);
+      color: $white;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1.125rem;
+      text-decoration: none;
+
+      &:hover {
+        background: linear-gradient(135deg, $secondary-green 0%, $primary-green 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba($primary-green, 0.3);
+      }
+    }
+
+    .btn-auth-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: $white;
+      color: $primary-green;
+      border: 2px solid $primary-green;
+      padding: 1rem 2rem;
+      border-radius: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1.125rem;
+      text-decoration: none;
+
+      &:hover {
+        background: $primary-green;
+        color: $white;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba($primary-green, 0.3);
+      }
+    }
+
+    .auth-note {
+      color: $gray-500;
+      font-size: 0.875rem;
+      font-style: italic;
+      margin: 0;
+      text-align: center;
+
+      @media (max-width: 1024px) {
+        text-align: center;
+      }
+    }
+  }
+
+  .invitation-visual {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    .dashboard-preview {
+      background: $white;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      max-width: 350px;
+      width: 100%;
+      position: relative;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        background: linear-gradient(135deg, $primary-green 0%, $accent-green 50%, $teal 100%);
+        border-radius: inherit;
+        z-index: -1;
+      }
+
+      .preview-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid $gray-200;
+
+        .preview-avatar {
+          width: 3rem;
+          height: 3rem;
+          background: linear-gradient(135deg, $primary-green 0%, $accent-green 100%);
+          border-radius: 50%;
+          position: relative;
+
+          &::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 1.5rem;
+            height: 1.5rem;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>');
+            background-size: contain;
+            background-repeat: no-repeat;
+          }
+        }
+
+        .preview-info {
+          .preview-name {
+            width: 120px;
+            height: 1rem;
+            background: linear-gradient(90deg, $gray-300 0%, $gray-200 50%, $gray-300 100%);
+            border-radius: 0.25rem;
+            margin-bottom: 0.5rem;
+            animation: shimmer 2s infinite;
+          }
+
+          .preview-subtitle {
+            width: 80px;
+            height: 0.75rem;
+            background: linear-gradient(90deg, $gray-300 0%, $gray-200 50%, $gray-300 100%);
+            border-radius: 0.25rem;
+            animation: shimmer 2s infinite 0.5s;
+          }
+        }
+      }
+
+      .preview-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+
+        .preview-card {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 1rem;
+          background: $gray-50;
+          border-radius: 0.5rem;
+          transition: all 0.3s ease;
+
+          &:hover {
+            background: $very-light-green;
+            transform: translateX(4px);
+          }
+
+          .card-icon {
+            font-size: 1.25rem;
+            opacity: 0.7;
+          }
+
+          .card-content {
+            flex: 1;
+
+            .card-title {
+              width: 100px;
+              height: 0.875rem;
+              background: linear-gradient(90deg, $gray-300 0%, $gray-200 50%, $gray-300 100%);
+              border-radius: 0.25rem;
+              margin-bottom: 0.5rem;
+              animation: shimmer 2s infinite 1s;
+            }
+
+            .card-subtitle {
+              width: 70px;
+              height: 0.75rem;
+              background: linear-gradient(90deg, $gray-300 0%, $gray-200 50%, $gray-300 100%);
+              border-radius: 0.25rem;
+              animation: shimmer 2s infinite 1.5s;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+}
+
+// Responsive pour la section d'authentification
+@media (max-width: 768px) {
+  .auth-invitation-section {
+    padding: 4rem 0;
+
+    .auth-invitation-content {
+      gap: 2rem;
+    }
+
+    .invitation-text {
+      h2 {
+        font-size: 1.75rem;
+      }
+
+      .benefits-list {
+        .benefit-item {
+          flex-direction: column;
+          text-align: center;
+          gap: 0.5rem;
+        }
+      }
+    }
+
+    .invitation-visual {
+      .dashboard-preview {
+        max-width: 300px;
+        padding: 1rem;
+
+        .preview-header {
+          .preview-avatar {
+            width: 2.5rem;
+            height: 2.5rem;
+
+            &::after {
+              width: 1.25rem;
+              height: 1.25rem;
+            }
+          }
+        }
+
+        .preview-cards {
+          .preview-card {
+            padding: 0.75rem;
+
+            .card-icon {
+              font-size: 1rem;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-invitation-section {
+    padding: 3rem 0;
+
+    .invitation-text {
+      h2 {
+        font-size: 1.5rem;
+      }
+
+      p {
+        font-size: 0.875rem;
+      }
+
+      .auth-buttons {
+        .btn-auth-primary,
+        .btn-auth-secondary {
+          padding: 0.875rem 1.5rem;
+          font-size: 1rem;
+        }
+      }
+    }
+
+    .invitation-visual {
+      .dashboard-preview {
+        max-width: 280px;
+      }
+    }
+  }
+}
 // Section Bamboo Assur
 .bamboo-assur-section {
   padding: 5rem 0;

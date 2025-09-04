@@ -1,4 +1,4 @@
-# user_models.py - Modèles SQLAlchemy pour les utilisateurs
+# user_models.py - Modèles SQLAlchemy corrigés pour les utilisateurs
 
 from sqlalchemy import Column, String, DateTime, Boolean, Text, Integer, Numeric, Date, ForeignKey, JSON, CheckConstraint
 from sqlalchemy.orm import relationship
@@ -6,6 +6,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 from datetime import datetime
 import uuid
+import secrets
 
 # Importer la base existante si elle existe, sinon créer une nouvelle
 try:
@@ -19,11 +20,11 @@ except ImportError:
 class User(Base):
     __tablename__ = "users"
     
-    id = Column(String(50), primary_key=True, default=lambda: f"user_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:6]}")
+    id = Column(String(50), primary_key=True)
     
     # Informations de contact
-    email = Column(String(100), unique=True, nullable=True)
-    phone = Column(String(20), unique=True, nullable=True)
+    email = Column(String(100), unique=True, nullable=True, index=True)
+    phone = Column(String(20), unique=True, nullable=True, index=True)
     
     # Informations personnelles
     first_name = Column(String(100), nullable=False)
@@ -44,19 +45,19 @@ class User(Base):
     registration_method = Column(String(20), nullable=False)
     
     # Vérification
-    email_verified = Column(Boolean, default=False)
-    phone_verified = Column(Boolean, default=False)
+    email_verified = Column(Boolean, default=False, nullable=False)
+    phone_verified = Column(Boolean, default=False, nullable=False)
     verification_code = Column(String(10), nullable=True)
     verification_expires_at = Column(DateTime, nullable=True)
     
     # Statut et préférences
-    is_active = Column(Boolean, default=True)
-    preferences = Column(JSON, default=dict)
+    is_active = Column(Boolean, default=True, nullable=False)
+    preferences = Column(JSON, default=dict, nullable=False)
     
     # Métadonnées
     last_login = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
     # Relations
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
@@ -64,6 +65,7 @@ class User(Base):
     credit_applications = relationship("UserCreditApplication", back_populates="user", cascade="all, delete-orphan")
     savings_applications = relationship("UserSavingsApplication", back_populates="user", cascade="all, delete-orphan")
     insurance_applications = relationship("UserInsuranceApplication", back_populates="user", cascade="all, delete-orphan")
+    documents = relationship("UserDocument", back_populates="user", cascade="all, delete-orphan")
     
     # Contraintes
     __table_args__ = (
@@ -74,34 +76,79 @@ class User(Base):
         CheckConstraint(
             "registration_method IN ('email', 'phone')",
             name="check_registration_method"
+        ),
+        CheckConstraint(
+            "gender IN ('male', 'female', 'other') OR gender IS NULL",
+            name="check_gender"
         )
     )
+
+    def __init__(self, **kwargs):
+        # Générer un ID unique si non fourni
+        if 'id' not in kwargs or not kwargs['id']:
+            timestamp = int(datetime.utcnow().timestamp())
+            random_part = secrets.token_hex(3)
+            kwargs['id'] = f"user_{timestamp}_{random_part}"
+        
+        # Définir les valeurs par défaut
+        if 'preferences' not in kwargs:
+            kwargs['preferences'] = {}
+        if 'is_active' not in kwargs:
+            kwargs['is_active'] = True
+        if 'email_verified' not in kwargs:
+            kwargs['email_verified'] = False
+        if 'phone_verified' not in kwargs:
+            kwargs['phone_verified'] = False
+        if 'created_at' not in kwargs:
+            kwargs['created_at'] = datetime.utcnow()
+        if 'updated_at' not in kwargs:
+            kwargs['updated_at'] = datetime.utcnow()
+            
+        super().__init__(**kwargs)
+
+    def __repr__(self):
+        return f"<User(id={self.id}, email={self.email}, phone={self.phone})>"
 
 class UserSession(Base):
     __tablename__ = "user_sessions"
     
-    id = Column(String(50), primary_key=True, default=lambda: f"session_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:6]}")
-    user_id = Column(String(50), ForeignKey("users.id"), nullable=False)
+    id = Column(String(50), primary_key=True)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Informations de session
-    token = Column(String(500), unique=True, nullable=False)
-    device_info = Column(JSON, default=dict)
+    token = Column(String(500), unique=True, nullable=False, index=True)
+    device_info = Column(JSON, default=dict, nullable=False)
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(Text, nullable=True)
     
     # Validité
     expires_at = Column(DateTime, nullable=False)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=func.now())
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
     
     # Relations
     user = relationship("User", back_populates="sessions")
 
+    def __init__(self, **kwargs):
+        if 'id' not in kwargs or not kwargs['id']:
+            timestamp = int(datetime.utcnow().timestamp())
+            random_part = secrets.token_hex(3)
+            kwargs['id'] = f"session_{timestamp}_{random_part}"
+        
+        if 'device_info' not in kwargs:
+            kwargs['device_info'] = {}
+        if 'is_active' not in kwargs:
+            kwargs['is_active'] = True
+        if 'created_at' not in kwargs:
+            kwargs['created_at'] = datetime.utcnow()
+            
+        super().__init__(**kwargs)
+
 class UserNotification(Base):
     __tablename__ = "user_notifications"
     
-    id = Column(String(50), primary_key=True, default=lambda: f"notif_{int(datetime.utcnow().timestamp())}_{uuid.uuid4().hex[:6]}")
-    user_id = Column(String(50), ForeignKey("users.id"), nullable=False)
+    id = Column(String(50), primary_key=True)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Contenu
     type = Column(String(50), nullable=False)
@@ -113,9 +160,9 @@ class UserNotification(Base):
     related_entity_id = Column(String(50), nullable=True)
     
     # Statut
-    is_read = Column(Boolean, default=False)
-    priority = Column(String(20), default="normal")
-    created_at = Column(DateTime, default=func.now())
+    is_read = Column(Boolean, default=False, nullable=False)
+    priority = Column(String(20), default="normal", nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
     
     # Relations
     user = relationship("User", back_populates="notifications")
@@ -128,15 +175,30 @@ class UserNotification(Base):
         ),
     )
 
+    def __init__(self, **kwargs):
+        if 'id' not in kwargs or not kwargs['id']:
+            timestamp = int(datetime.utcnow().timestamp())
+            random_part = secrets.token_hex(3)
+            kwargs['id'] = f"notif_{timestamp}_{random_part}"
+        
+        if 'is_read' not in kwargs:
+            kwargs['is_read'] = False
+        if 'priority' not in kwargs:
+            kwargs['priority'] = 'normal'
+        if 'created_at' not in kwargs:
+            kwargs['created_at'] = datetime.utcnow()
+            
+        super().__init__(**kwargs)
+
 # ==================== MODÈLES APPLICATIONS ====================
 
 class UserCreditApplication(Base):
     __tablename__ = "user_credit_applications"
     
-    id = Column(String(50), primary_key=True, default=lambda: f"app_credit_{int(datetime.utcnow().timestamp())}")
-    user_id = Column(String(50), ForeignKey("users.id"), nullable=False)
-    credit_product_id = Column(String(50), ForeignKey("credit_products.id"), nullable=True)
-    simulation_id = Column(String(50), ForeignKey("credit_simulations.id"), nullable=True)
+    id = Column(String(50), primary_key=True)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    credit_product_id = Column(String(50), nullable=True)  # ForeignKey sera ajoutée si la table existe
+    simulation_id = Column(String(50), nullable=True)  # ForeignKey sera ajoutée si la table existe
     
     # Détails de la demande
     requested_amount = Column(Numeric(12, 2), nullable=False)
@@ -145,8 +207,8 @@ class UserCreditApplication(Base):
     
     # Informations financières
     monthly_income = Column(Numeric(10, 2), nullable=False)
-    current_debts = Column(Numeric(10, 2), default=0)
-    down_payment = Column(Numeric(12, 2), default=0)
+    current_debts = Column(Numeric(10, 2), default=0, nullable=False)
+    down_payment = Column(Numeric(12, 2), default=0, nullable=False)
     
     # Informations emploi
     employment_type = Column(String(50), nullable=True)
@@ -154,24 +216,24 @@ class UserCreditApplication(Base):
     employment_duration_months = Column(Integer, nullable=True)
     
     # Documents et traitement
-    documents = Column(JSON, default=list)
-    status = Column(String(50), default="pending")
+    documents = Column(JSON, default=list, nullable=False)
+    status = Column(String(50), default="pending", nullable=False)
     bank_response = Column(JSON, nullable=True)
     bank_contact_info = Column(JSON, nullable=True)
     
     # Suivi administratif
     processing_notes = Column(Text, nullable=True)
-    priority_level = Column(Integer, default=3)
+    priority_level = Column(Integer, default=3, nullable=False)
     assigned_to = Column(String(50), nullable=True)
     expected_response_date = Column(Date, nullable=True)
     
     # Notifications
-    user_notified = Column(Boolean, default=False)
+    user_notified = Column(Boolean, default=False, nullable=False)
     last_notification_sent = Column(DateTime, nullable=True)
     
     # Métadonnées
-    submitted_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    submitted_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
     # Relations
     user = relationship("User", back_populates="credit_applications")
@@ -188,13 +250,37 @@ class UserCreditApplication(Base):
         )
     )
 
+    def __init__(self, **kwargs):
+        if 'id' not in kwargs or not kwargs['id']:
+            timestamp = int(datetime.utcnow().timestamp())
+            kwargs['id'] = f"app_credit_{timestamp}"
+        
+        if 'documents' not in kwargs:
+            kwargs['documents'] = []
+        if 'status' not in kwargs:
+            kwargs['status'] = 'pending'
+        if 'current_debts' not in kwargs:
+            kwargs['current_debts'] = 0
+        if 'down_payment' not in kwargs:
+            kwargs['down_payment'] = 0
+        if 'priority_level' not in kwargs:
+            kwargs['priority_level'] = 3
+        if 'user_notified' not in kwargs:
+            kwargs['user_notified'] = False
+        if 'submitted_at' not in kwargs:
+            kwargs['submitted_at'] = datetime.utcnow()
+        if 'updated_at' not in kwargs:
+            kwargs['updated_at'] = datetime.utcnow()
+            
+        super().__init__(**kwargs)
+
 class UserSavingsApplication(Base):
     __tablename__ = "user_savings_applications"
     
-    id = Column(String(50), primary_key=True, default=lambda: f"app_savings_{int(datetime.utcnow().timestamp())}")
-    user_id = Column(String(50), ForeignKey("users.id"), nullable=False)
-    savings_product_id = Column(String(50), ForeignKey("savings_products.id"), nullable=True)
-    simulation_id = Column(String(50), ForeignKey("savings_simulations.id"), nullable=True)
+    id = Column(String(50), primary_key=True)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    savings_product_id = Column(String(50), nullable=True)  # ForeignKey sera ajoutée si la table existe
+    simulation_id = Column(String(50), nullable=True)  # ForeignKey sera ajoutée si la table existe
     
     # Détails de la demande
     initial_deposit = Column(Numeric(12, 2), nullable=False)
@@ -204,8 +290,8 @@ class UserSavingsApplication(Base):
     target_date = Column(Date, nullable=True)
     
     # Documents et traitement
-    documents = Column(JSON, default=list)
-    status = Column(String(50), default="pending")
+    documents = Column(JSON, default=list, nullable=False)
+    status = Column(String(50), default="pending", nullable=False)
     bank_response = Column(JSON, nullable=True)
     account_number = Column(String(50), nullable=True)
     
@@ -214,8 +300,8 @@ class UserSavingsApplication(Base):
     assigned_to = Column(String(50), nullable=True)
     
     # Métadonnées
-    submitted_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    submitted_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
     # Relations
     user = relationship("User", back_populates="savings_applications")
@@ -228,18 +314,34 @@ class UserSavingsApplication(Base):
         ),
     )
 
+    def __init__(self, **kwargs):
+        if 'id' not in kwargs or not kwargs['id']:
+            timestamp = int(datetime.utcnow().timestamp())
+            kwargs['id'] = f"app_savings_{timestamp}"
+        
+        if 'documents' not in kwargs:
+            kwargs['documents'] = []
+        if 'status' not in kwargs:
+            kwargs['status'] = 'pending'
+        if 'submitted_at' not in kwargs:
+            kwargs['submitted_at'] = datetime.utcnow()
+        if 'updated_at' not in kwargs:
+            kwargs['updated_at'] = datetime.utcnow()
+            
+        super().__init__(**kwargs)
+
 class UserInsuranceApplication(Base):
     __tablename__ = "user_insurance_applications"
     
-    id = Column(String(50), primary_key=True, default=lambda: f"app_insurance_{int(datetime.utcnow().timestamp())}")
-    user_id = Column(String(50), ForeignKey("users.id"), nullable=False)
-    insurance_product_id = Column(String(50), ForeignKey("insurance_products.id"), nullable=True)
-    quote_id = Column(String(50), ForeignKey("insurance_quotes.id"), nullable=True)
+    id = Column(String(50), primary_key=True)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    insurance_product_id = Column(String(50), nullable=True)  # ForeignKey sera ajoutée si la table existe
+    quote_id = Column(String(50), nullable=True)  # ForeignKey sera ajoutée si la table existe
     
     # Informations de base
     insurance_type = Column(String(50), nullable=False)
     coverage_amount = Column(Numeric(12, 2), nullable=True)
-    beneficiaries = Column(JSON, default=list)
+    beneficiaries = Column(JSON, default=list, nullable=False)
     
     # Informations spécifiques par type d'assurance
     vehicle_info = Column(JSON, nullable=True)  # Pour assurance auto
@@ -249,12 +351,12 @@ class UserInsuranceApplication(Base):
     business_info = Column(JSON, nullable=True)  # Pour assurance professionnelle
     
     # Documents et examens
-    documents = Column(JSON, default=list)
-    medical_exam_required = Column(Boolean, default=False)
-    medical_exam_completed = Column(Boolean, default=False)
+    documents = Column(JSON, default=list, nullable=False)
+    medical_exam_required = Column(Boolean, default=False, nullable=False)
+    medical_exam_completed = Column(Boolean, default=False, nullable=False)
     
     # Traitement
-    status = Column(String(50), default="pending")
+    status = Column(String(50), default="pending", nullable=False)
     insurance_response = Column(JSON, nullable=True)
     policy_number = Column(String(50), nullable=True)
     premium_amount = Column(Numeric(10, 2), nullable=True)
@@ -264,8 +366,8 @@ class UserInsuranceApplication(Base):
     assigned_to = Column(String(50), nullable=True)
     
     # Métadonnées
-    submitted_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    submitted_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     
     # Relations
     user = relationship("User", back_populates="insurance_applications")
@@ -278,53 +380,35 @@ class UserInsuranceApplication(Base):
         ),
     )
 
-# ==================== VUES POUR STATISTIQUES ====================
+    def __init__(self, **kwargs):
+        if 'id' not in kwargs or not kwargs['id']:
+            timestamp = int(datetime.utcnow().timestamp())
+            kwargs['id'] = f"app_insurance_{timestamp}"
+        
+        if 'documents' not in kwargs:
+            kwargs['documents'] = []
+        if 'beneficiaries' not in kwargs:
+            kwargs['beneficiaries'] = []
+        if 'status' not in kwargs:
+            kwargs['status'] = 'pending'
+        if 'medical_exam_required' not in kwargs:
+            kwargs['medical_exam_required'] = False
+        if 'medical_exam_completed' not in kwargs:
+            kwargs['medical_exam_completed'] = False
+        if 'submitted_at' not in kwargs:
+            kwargs['submitted_at'] = datetime.utcnow()
+        if 'updated_at' not in kwargs:
+            kwargs['updated_at'] = datetime.utcnow()
+            
+        super().__init__(**kwargs)
 
-# Cette vue sera créée par la migration SQL, pas par SQLAlchemy
-# Elle est référencée ici pour documentation
-class UserDashboardStats(Base):
-    __tablename__ = "user_dashboard_stats"
-    
-    id = Column(String(50), primary_key=True)
-    first_name = Column(String(100))
-    last_name = Column(String(100))
-    email = Column(String(100))
-    phone = Column(String(20))
-    
-    total_credit_simulations = Column(Integer)
-    total_savings_simulations = Column(Integer)
-    total_insurance_quotes = Column(Integer)
-    total_credit_applications = Column(Integer)
-    total_savings_applications = Column(Integer)
-    total_insurance_applications = Column(Integer)
-    unread_notifications = Column(Integer)
-
-# ==================== EXTENSIONS AUX MODÈLES EXISTANTS ====================
-
-# Si vous avez déjà des modèles existants, ajoutez ces colonnes :
-
-# Pour CreditSimulation (ajout des colonnes user_id, saved, name)
-# ALTER TABLE credit_simulations ADD COLUMN user_id VARCHAR(50) REFERENCES users(id);
-# ALTER TABLE credit_simulations ADD COLUMN saved BOOLEAN DEFAULT FALSE;
-# ALTER TABLE credit_simulations ADD COLUMN name VARCHAR(200);
-
-# Pour SavingsSimulation (ajout des colonnes user_id, saved, name)
-# ALTER TABLE savings_simulations ADD COLUMN user_id VARCHAR(50) REFERENCES users(id);
-# ALTER TABLE savings_simulations ADD COLUMN saved BOOLEAN DEFAULT FALSE;
-# ALTER TABLE savings_simulations ADD COLUMN name VARCHAR(200);
-
-# Pour InsuranceQuote (ajout des colonnes user_id, saved, name)
-# ALTER TABLE insurance_quotes ADD COLUMN user_id VARCHAR(50) REFERENCES users(id);
-# ALTER TABLE insurance_quotes ADD COLUMN saved BOOLEAN DEFAULT FALSE;
-# ALTER TABLE insurance_quotes ADD COLUMN name VARCHAR(200);
-
-# ==================== MODÈLE OPTIONNEL POUR DOCUMENTS ====================
+# ==================== MODÈLE POUR DOCUMENTS ====================
 
 class UserDocument(Base):
     __tablename__ = "user_documents"
     
-    id = Column(String(50), primary_key=True, default=lambda: f"doc_{uuid.uuid4().hex}")
-    user_id = Column(String(50), ForeignKey("users.id"), nullable=False)
+    id = Column(String(50), primary_key=True)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Informations du fichier
     filename = Column(String(255), nullable=False)
@@ -340,115 +424,126 @@ class UserDocument(Base):
     application_id = Column(String(50), nullable=True)
     
     # Métadonnées
-    is_verified = Column(Boolean, default=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
     verified_by = Column(String(50), nullable=True)
     verified_at = Column(DateTime, nullable=True)
     
-    uploaded_at = Column(DateTime, default=func.now())
+    uploaded_at = Column(DateTime, default=func.now(), nullable=False)
     expires_at = Column(DateTime, nullable=True)  # Pour documents temporaires
     
     # Relations
-    user = relationship("User")
+    user = relationship("User", back_populates="documents")
 
-# ==================== FONCTIONS HELPER POUR LES MODÈLES ====================
+    def __init__(self, **kwargs):
+        if 'id' not in kwargs or not kwargs['id']:
+            kwargs['id'] = f"doc_{uuid.uuid4().hex}"
+        
+        if 'is_verified' not in kwargs:
+            kwargs['is_verified'] = False
+        if 'uploaded_at' not in kwargs:
+            kwargs['uploaded_at'] = datetime.utcnow()
+            
+        super().__init__(**kwargs)
 
-def create_user_tables():
+# ==================== FONCTIONS UTILITAIRES ====================
+
+def create_user_tables(engine=None):
     """
     Fonction pour créer toutes les tables utilisateur
-    À utiliser avec votre engine SQLAlchemy existant
     """
-    from sqlalchemy import create_engine
-    import os
-    
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/bamboo_db")
-    engine = create_engine(DATABASE_URL)
+    if engine is None:
+        from sqlalchemy import create_engine
+        import os
+        DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/bamboo_db")
+        engine = create_engine(DATABASE_URL)
     
     # Créer toutes les tables
     Base.metadata.create_all(engine)
-    
     print("Tables utilisateur créées avec succès !")
 
-def add_user_columns_to_existing_tables():
+def get_sql_for_existing_tables():
     """
     Script SQL pour ajouter les colonnes user aux tables existantes
     """
     sql_commands = [
-        # Ajouter colonnes à credit_simulations
-        "ALTER TABLE credit_simulations ADD COLUMN IF NOT EXISTS user_id VARCHAR(50) REFERENCES users(id);",
-        "ALTER TABLE credit_simulations ADD COLUMN IF NOT EXISTS saved BOOLEAN DEFAULT FALSE;",
-        "ALTER TABLE credit_simulations ADD COLUMN IF NOT EXISTS name VARCHAR(200);",
+        # Ajouter colonnes à credit_simulations (si elle existe)
+        """
+        DO $$ 
+        BEGIN
+            IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'credit_simulations') THEN
+                IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name='credit_simulations' and column_name='user_id') THEN
+                    ALTER TABLE credit_simulations ADD COLUMN user_id VARCHAR(50);
+                    ALTER TABLE credit_simulations ADD COLUMN saved BOOLEAN DEFAULT FALSE;
+                    ALTER TABLE credit_simulations ADD COLUMN name VARCHAR(200);
+                END IF;
+            END IF;
+        END $$;
+        """,
         
-        # Ajouter colonnes à savings_simulations
-        "ALTER TABLE savings_simulations ADD COLUMN IF NOT EXISTS user_id VARCHAR(50) REFERENCES users(id);",
-        "ALTER TABLE savings_simulations ADD COLUMN IF NOT EXISTS saved BOOLEAN DEFAULT FALSE;",
-        "ALTER TABLE savings_simulations ADD COLUMN IF NOT EXISTS name VARCHAR(200);",
+        # Ajouter colonnes à savings_simulations (si elle existe)
+        """
+        DO $$ 
+        BEGIN
+            IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'savings_simulations') THEN
+                IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name='savings_simulations' and column_name='user_id') THEN
+                    ALTER TABLE savings_simulations ADD COLUMN user_id VARCHAR(50);
+                    ALTER TABLE savings_simulations ADD COLUMN saved BOOLEAN DEFAULT FALSE;
+                    ALTER TABLE savings_simulations ADD COLUMN name VARCHAR(200);
+                END IF;
+            END IF;
+        END $$;
+        """,
         
-        # Ajouter colonnes à insurance_quotes
-        "ALTER TABLE insurance_quotes ADD COLUMN IF NOT EXISTS user_id VARCHAR(50) REFERENCES users(id);",
-        "ALTER TABLE insurance_quotes ADD COLUMN IF NOT EXISTS saved BOOLEAN DEFAULT FALSE;",
-        "ALTER TABLE insurance_quotes ADD COLUMN IF NOT EXISTS name VARCHAR(200);",
+        # Ajouter colonnes à insurance_quotes (si elle existe)
+        """
+        DO $$ 
+        BEGIN
+            IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'insurance_quotes') THEN
+                IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name='insurance_quotes' and column_name='user_id') THEN
+                    ALTER TABLE insurance_quotes ADD COLUMN user_id VARCHAR(50);
+                    ALTER TABLE insurance_quotes ADD COLUMN saved BOOLEAN DEFAULT FALSE;
+                    ALTER TABLE insurance_quotes ADD COLUMN name VARCHAR(200);
+                END IF;
+            END IF;
+        END $$;
+        """,
         
-        # Index pour les performances
-        "CREATE INDEX IF NOT EXISTS idx_credit_simulations_user ON credit_simulations(user_id);",
-        "CREATE INDEX IF NOT EXISTS idx_savings_simulations_user ON savings_simulations(user_id);",
-        "CREATE INDEX IF NOT EXISTS idx_insurance_quotes_user ON insurance_quotes(user_id);",
-        "CREATE INDEX IF NOT EXISTS idx_credit_simulations_saved ON credit_simulations(saved);",
-        "CREATE INDEX IF NOT EXISTS idx_savings_simulations_saved ON savings_simulations(saved);",
-        "CREATE INDEX IF NOT EXISTS idx_insurance_quotes_saved ON insurance_quotes(saved);",
+        # Créer des index pour les performances
+        """
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_credit_simulations_user ON credit_simulations(user_id);
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_savings_simulations_user ON savings_simulations(user_id);
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_insurance_quotes_user ON insurance_quotes(user_id);
+        """
     ]
     
     return sql_commands
 
-# ==================== MODÈLES ÉTENDUS (si vous voulez étendre les existants) ====================
+# ==================== FONCTION DE TEST ====================
 
-# Si vous voulez modifier vos modèles existants au lieu d'utiliser des migrations SQL,
-# voici comment les étendre :
-
-# class CreditSimulationExtended(Base):
-#     __tablename__ = "credit_simulations"
-#     
-#     # Colonnes existantes...
-#     id = Column(String(50), primary_key=True)
-#     # ... autres colonnes existantes ...
-#     
-#     # Nouvelles colonnes
-#     user_id = Column(String(50), ForeignKey("users.id"), nullable=True)
-#     saved = Column(Boolean, default=False)
-#     name = Column(String(200), nullable=True)
-#     
-#     # Relations
-#     user = relationship("User")
-
-# class SavingsSimulationExtended(Base):
-#     __tablename__ = "savings_simulations"
-#     
-#     # Colonnes existantes...
-#     id = Column(String(50), primary_key=True)
-#     # ... autres colonnes existantes ...
-#     
-#     # Nouvelles colonnes
-#     user_id = Column(String(50), ForeignKey("users.id"), nullable=True)
-#     saved = Column(Boolean, default=False)
-#     name = Column(String(200), nullable=True)
-#     
-#     # Relations
-#     user = relationship("User")
-
-# class InsuranceQuoteExtended(Base):
-#     __tablename__ = "insurance_quotes"
-#     
-#     # Colonnes existantes...
-#     id = Column(String(50), primary_key=True)
-#     # ... autres colonnes existantes ...
-#     
-#     # Nouvelles colonnes
-#     user_id = Column(String(50), ForeignKey("users.id"), nullable=True)
-#     saved = Column(Boolean, default=False)
-#     name = Column(String(200), nullable=True)
-#     
-#     # Relations
-#     user = relationship("User")
+def test_user_creation():
+    """
+    Test de création d'un utilisateur
+    """
+    try:
+        user = User(
+            email="test@example.com",
+            first_name="Test",
+            last_name="User",
+            registration_method="email"
+        )
+        print(f"Utilisateur créé avec succès: {user.id}")
+        print(f"Email: {user.email}")
+        print(f"Nom complet: {user.first_name} {user.last_name}")
+        print(f"Préférences: {user.preferences}")
+        return user
+    except Exception as e:
+        print(f"Erreur lors de la création de l'utilisateur: {e}")
+        return None
 
 if __name__ == "__main__":
-    # Pour tester la création des tables
-    create_user_tables()
+    # Test de création d'utilisateur
+    test_user = test_user_creation()
+    if test_user:
+        print("\nTest réussi !")
+    else:
+        print("\nTest échoué !")

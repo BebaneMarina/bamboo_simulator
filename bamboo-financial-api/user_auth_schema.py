@@ -1,9 +1,10 @@
-# user_auth_schemas.py - Schémas Pydantic pour l'authentification utilisateur
+# user_auth_schemas.py - Schémas Pydantic corrigés pour l'authentification utilisateur
 
 from pydantic import BaseModel, EmailStr, validator, Field
 from typing import Optional, Dict, Any, List, Literal
 from datetime import datetime, date
 from enum import Enum
+import re  # AJOUT MANQUANT
 
 # ==================== ENUMS ====================
 
@@ -36,72 +37,60 @@ class NotificationPriority(str, Enum):
 # ==================== AUTHENTIFICATION ====================
 
 class UserRegistrationRequest(BaseModel):
-    # Méthode d'inscription
-    registration_method: RegistrationMethod
-    
-    # Informations de contact (au moins une requise)
-    email: Optional[EmailStr] = None
+    # Changement: utiliser str au lieu de Literal pour plus de flexibilité
+    registration_method: str = Field(..., regex="^(email|phone)$")
+    email: Optional[str] = None  # Changement: EmailStr peut être trop strict
     phone: Optional[str] = None
-    
-    # Informations personnelles
-    first_name: str = Field(..., min_length=2, max_length=100)
-    last_name: str = Field(..., min_length=2, max_length=100)
-    date_of_birth: Optional[date] = None
-    gender: Optional[Gender] = None
-    
-    # Informations professionnelles (optionnelles à l'inscription)
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+    password: Optional[str] = Field(None, min_length=6)
+    date_of_birth: Optional[str] = None  # Changement: str au lieu de date pour flexibilité
+    gender: Optional[str] = None  # Changement: str au lieu de Literal
     profession: Optional[str] = None
     monthly_income: Optional[float] = Field(None, ge=0)
-    
-    # Localisation
     city: Optional[str] = None
     address: Optional[str] = None
+    preferences: Optional[Dict[str, Any]] = None
     
-    # Mot de passe (optionnel pour inscription par SMS)
-    password: Optional[str] = Field(None, min_length=8)
+    @validator('email')
+    def email_required_if_email_method(cls, v, values):
+        registration_method = values.get('registration_method')
+        if registration_method == 'email' and not v:
+            raise ValueError('Email requis pour inscription par email')
+        # Validation email basique si fourni
+        if v and '@' not in v:
+            raise ValueError('Format email invalide')
+        return v
     
-    # Préférences
-    preferences: Optional[Dict[str, Any]] = {}
-    
-    @validator('phone')
-    def validate_phone(cls, v):
-        if v and not v.startswith('+241'):
-            if v.startswith('241'):
-                v = '+' + v
-            elif v.startswith('0'):
-                v = '+241' + v[1:]
-            else:
-                v = '+241' + v
+    @validator('phone')  
+    def phone_required_if_phone_method(cls, v, values):
+        registration_method = values.get('registration_method')
+        if registration_method == 'phone' and not v:
+            raise ValueError('Téléphone requis pour inscription par SMS')
+        if v:
+            # Format gabonais simple
+            try:
+                cleaned = re.sub(r'[^\d+]', '', v)
+                if not cleaned.startswith('+241'):
+                    if cleaned.startswith('241'):
+                        v = '+' + cleaned
+                    elif len(cleaned) == 8:
+                        v = '+241' + cleaned
+            except Exception:
+                pass  # Si erreur de formatage, on garde la valeur originale
         return v
     
     @validator('password')
-    def validate_password_strength(cls, v, values):
+    def validate_password(cls, v, values):
         registration_method = values.get('registration_method')
-        
-        # Mot de passe requis pour inscription par email
-        if registration_method == RegistrationMethod.EMAIL and not v:
-            raise ValueError('Le mot de passe est requis pour l\'inscription par email')
-        
-        if v and len(v) < 8:
-            raise ValueError('Le mot de passe doit contenir au moins 8 caractères')
-        
-        return v
-    
-    @validator('email')
-    def email_required_for_email_registration(cls, v, values):
-        if values.get('registration_method') == RegistrationMethod.EMAIL and not v:
-            raise ValueError('L\'email est requis pour l\'inscription par email')
-        return v
-    
-    @validator('phone')
-    def phone_required_for_phone_registration(cls, v, values):
-        if values.get('registration_method') == RegistrationMethod.PHONE and not v:
-            raise ValueError('Le téléphone est requis pour l\'inscription par SMS')
+        # Mot de passe obligatoire pour inscription email
+        if registration_method == 'email' and not v:
+            raise ValueError('Mot de passe requis pour inscription par email')
         return v
 
 class UserLoginRequest(BaseModel):
     # L'utilisateur peut se connecter avec email ou téléphone
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None  # Changement: str au lieu d'EmailStr
     phone: Optional[str] = None
     password: str = Field(..., min_length=1)
     remember_me: bool = False
@@ -110,34 +99,38 @@ class UserLoginRequest(BaseModel):
     @validator('phone')
     def validate_phone(cls, v):
         if v and not v.startswith('+241'):
-            if v.startswith('241'):
-                v = '+' + v
-            elif v.startswith('0'):
-                v = '+241' + v[1:]
-            else:
-                v = '+241' + v
+            try:
+                if v.startswith('241'):
+                    v = '+' + v
+                elif v.startswith('0'):
+                    v = '+241' + v[1:]
+                else:
+                    v = '+241' + v
+            except Exception:
+                pass
         return v
     
-    def __init__(self, **data):
-        super().__init__(**data)
-        if not self.email and not self.phone:
+    @validator('password')
+    def validate_login_data(cls, v, values):
+        if not values.get('email') and not values.get('phone'):
             raise ValueError('Email ou téléphone requis pour la connexion')
+        return v
 
 class VerificationRequest(BaseModel):
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None  # Changement: str au lieu d'EmailStr
     phone: Optional[str] = None
     code: str = Field(..., min_length=4, max_length=10)
 
 class ResendVerificationRequest(BaseModel):
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None  # Changement: str au lieu d'EmailStr
     phone: Optional[str] = None
 
 class PasswordResetRequest(BaseModel):
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None  # Changement: str au lieu d'EmailStr
     phone: Optional[str] = None
 
 class PasswordResetConfirm(BaseModel):
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None  # Changement: str au lieu d'EmailStr
     phone: Optional[str] = None
     code: str = Field(..., min_length=4, max_length=10)
     new_password: str = Field(..., min_length=8)
@@ -184,8 +177,8 @@ class RegistrationResponse(BaseModel):
 class UserProfileUpdate(BaseModel):
     first_name: Optional[str] = Field(None, min_length=2, max_length=100)
     last_name: Optional[str] = Field(None, min_length=2, max_length=100)
-    date_of_birth: Optional[date] = None
-    gender: Optional[Gender] = None
+    date_of_birth: Optional[str] = None  # Changement: str au lieu de date
+    gender: Optional[str] = None  # Changement: str au lieu de Gender enum
     profession: Optional[str] = None
     monthly_income: Optional[float] = Field(None, ge=0)
     city: Optional[str] = None
@@ -197,7 +190,7 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8)
 
 class AddContactMethodRequest(BaseModel):
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None  # Changement: str au lieu d'EmailStr
     phone: Optional[str] = None
     password: str  # Confirmation avec mot de passe
 
@@ -205,7 +198,7 @@ class AddContactMethodRequest(BaseModel):
 
 class SaveSimulationRequest(BaseModel):
     simulation_id: str
-    simulation_type: Literal["credit", "savings", "insurance"]
+    simulation_type: str = Field(..., regex="^(credit|savings|insurance)$")
     name: str = Field(..., min_length=1, max_length=200)
 
 class CreditApplicationRequest(BaseModel):
@@ -228,7 +221,6 @@ class CreditApplicationRequest(BaseModel):
     # Documents (IDs des fichiers uploadés)
     document_ids: List[str] = []
 
-
 class SavingsApplicationRequest(BaseModel):
     savings_product_id: str 
     simulation_id: Optional[str] = None
@@ -236,7 +228,7 @@ class SavingsApplicationRequest(BaseModel):
     monthly_contribution: Optional[float] = Field(None, ge=0)
     savings_goal: Optional[str] = None
     target_amount: Optional[float] = Field(None, gt=0)
-    target_date: Optional[date]= None
+    target_date: Optional[str] = None  # Changement: str au lieu de date
     document_ids: List[str] = []
 
 class InsuranceApplicationRequest(BaseModel):
@@ -286,7 +278,7 @@ class UserStatsResponse(BaseModel):
 
 class ApplicationSummary(BaseModel):
     id: str
-    type: Literal["credit", "savings", "insurance"]
+    type: str = Field(..., regex="^(credit|savings|insurance)$")
     product_name: str
     bank_or_company_name: str
     amount: Optional[float] = None
@@ -296,7 +288,7 @@ class ApplicationSummary(BaseModel):
 
 class SimulationSummary(BaseModel):
     id: str
-    type: Literal["credit", "savings", "insurance"]
+    type: str = Field(..., regex="^(credit|savings|insurance)$")
     product_name: str
     bank_or_company_name: str
     name: Optional[str] = None

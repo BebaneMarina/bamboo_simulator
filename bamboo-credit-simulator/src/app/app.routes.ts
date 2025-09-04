@@ -54,12 +54,6 @@ export const routes: Routes = [
     data: { title: 'Mon Profil' }
   },
 
-  {
-    path: 'settings',
-    loadComponent: () => import('./components/users/user-settings.component').then(c => c.UserSettingsComponent),
-    canActivate: [UserAuthGuard],
-    data: { title: 'Mes Paramètres' }
-  },
 
   {
     path: 'simulations',
@@ -119,11 +113,11 @@ export const routes: Routes = [
     path: 'apply',
     canActivate: [UserAuthGuard],
     children: [
-      {
+      /*{
         path: 'credit',
         loadComponent: () => import('./components/users/credit-application.component').then(c => c.CreditApplicationComponent),
         data: { title: 'Demande de Crédit' }
-      },
+      },*/
       /*{
         path: 'savings',
         loadComponent: () => import('./user/savings-application.component').then(c => c.SavingsApplicationComponent),

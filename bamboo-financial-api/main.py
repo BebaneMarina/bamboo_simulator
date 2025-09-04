@@ -198,6 +198,13 @@ async def get_current_admin_user(
         raise credentials_exception
 
 # Import des routers avec gestion d'erreurs
+
+try:
+    from routers import auth_router as auth
+    auth_available = True
+except ImportError:
+    auth_available = False
+    print("Warning: auth router not available")
 try:
     from routers import banks
     banks_available = True
@@ -484,6 +491,9 @@ async def cors_handler(request: Request, call_next):
     return response
 
 # Inclusion des routers - seulement ceux qui sont disponibles
+if auth_available:
+    app.include_router(auth.router, prefix="/api", tags=["Authentification"])
+    logger.info("Auth router included")
 if banks_available:
     app.include_router(banks.router, prefix="/api/banks", tags=["Banques"])
     logger.info("Banks router included")

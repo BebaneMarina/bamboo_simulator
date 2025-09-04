@@ -1,15 +1,13 @@
-// auth.service.ts - Service Angular pour l'authentification utilisateur
-
+// src/app/services/user-auth.service.ts - Version complète corrigée
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError, timer } from 'rxjs';
 import { map, catchError, switchMap, tap } from 'rxjs/operators';
-import { Params, Router } from '@angular/router';
+import { Router } from '@angular/router';
 
 // ==================== INTERFACES ====================
 
 export interface User {
-  settings: User | null;
   id: string;
   email?: string;
   phone?: string;
@@ -28,6 +26,11 @@ export interface User {
   last_login?: string;
   created_at: string;
   preferences: any;
+  settings?: {
+    notifications?: any;
+    privacy?: any;
+    interface?: any;
+  };
 }
 
 export interface LoginRequest {
@@ -77,31 +80,10 @@ export interface VerificationRequest {
   code: string;
 }
 
-export interface UserApplication {
-  id: string;
-  type: 'credit' | 'savings' | 'insurance';
-  status: string;
-  product_name: string;
-  bank_or_company_name: string;
-  amount?: number;
-  submitted_at: string;
-  updated_at: string;
-  
-  // Propriétés communes optionnelles
-  duration?: number;
-  reference_number?: string;
-  
-  // Propriétés spécifiques au crédit
-  monthly_payment?: number;
-  
-  // Propriétés spécifiques à l'épargne
-  monthly_amount?: number;
-  
-  // Propriétés spécifiques à l'assurance
-  coverage_type?: string;
-  monthly_premium?: number;
-    coverage_amount?: number;
-    [key: string]: any;
+interface PreferencesResponse {
+  success?: boolean;
+  preferences?: any;
+  message?: string;
 }
 
 export interface UserSimulation {
@@ -130,22 +112,17 @@ export interface UserSimulation {
   };
   
   result_summary?: {
-    // Résultats crédit
     monthly_payment?: number;
     interest_rate?: number;
     total_cost?: number;
     debt_ratio?: number;
     remaining_income?: number;
-    
-    // Résultats épargne
     final_amount?: number;
     annual_return?: number;
     capital_gain?: number;
-    
-    // Résultats assurance
     monthly_premium?: number;
     annual_premium?: number;
-    coverage_amount?: number; // AJOUTEZ CETTE LIGNE
+    coverage_amount?: number;
   };
   
   chart_data?: any;
@@ -158,7 +135,6 @@ export interface UserSimulation {
 }
 
 export interface UserApplication {
-  documents?: any;
   id: string;
   type: 'credit' | 'savings' | 'insurance';
   product_name: string;
@@ -167,6 +143,15 @@ export interface UserApplication {
   status: string;
   submitted_at: string;
   updated_at: string;
+  documents?: any;
+  duration?: number;
+  reference_number?: string;
+  monthly_payment?: number;
+  monthly_amount?: number;
+  coverage_type?: string;
+  monthly_premium?: number;
+  coverage_amount?: number;
+  [key: string]: any;
 }
 
 export interface UserNotification {
@@ -203,7 +188,7 @@ export interface UserDashboard {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:8000/api/auth';
+  private apiUrl = 'http://localhost:8000/api';
   
   // Subjects pour l'état de l'authentification
   private currentUserSubject = new BehaviorSubject<User | null>(null);
@@ -214,20 +199,6 @@ export class AuthService {
   public currentUser$ = this.currentUserSubject.asObservable();
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
   public token$ = this.tokenSubject.asObservable();
-  getCurrentUser: any;
-    updatePreferences: any;
-    logoutAllDevices: any;
-    updateSettings: any;
-    requestDataDownload: any;
-    deleteAccount: any;
-    downloadSimulation: any;
-    deleteSimulation: any;
-    getSimulation: any;
-    cancelApplication: any;
-    getApplication: any;
-    downloadDocument: any;
-    submitCreditApplication: any;
-  getUserStats: any;
 
   constructor(
     private http: HttpClient,
@@ -293,12 +264,12 @@ export class AuthService {
   // ==================== MÉTHODES D'AUTHENTIFICATION ====================
 
   register(registerData: RegisterRequest): Observable<RegistrationResponse> {
-    return this.http.post<RegistrationResponse>(`${this.apiUrl}/register`, registerData)
+    return this.http.post<RegistrationResponse>(`${this.apiUrl}/auth/register`, registerData)
       .pipe(
         tap(response => {
           if (response.success && !response.verification_required) {
             // Si pas de vérification requise, connecter directement
-            this.setAuthData(response.user, ''); // Token sera fourni après vérification
+            // Note: En réalité, la vérification est toujours requise selon notre backend
           }
         }),
         catchError(this.handleError)
@@ -315,7 +286,7 @@ export class AuthService {
     
     const requestData = { ...loginData, device_info: deviceInfo };
     
-    return this.http.post<LoginResponse>(`${this.apiUrl}/login`, requestData)
+    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, requestData)
       .pipe(
         tap(response => {
           if (response.success) {
@@ -326,11 +297,12 @@ export class AuthService {
       );
   }
 
-  verify(verificationData: VerificationRequest): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${this.apiUrl}/verify`, verificationData)
+  verify(verificationData: VerificationRequest): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/auth/verify`, verificationData)
       .pipe(
         tap(response => {
-          if (response.success) {
+          if (response.success && response.token) {
+            // Si la vérification retourne un token (inscription SMS)
             this.setAuthData(response.user, response.token);
           }
         }),
@@ -339,14 +311,14 @@ export class AuthService {
   }
 
   resendVerification(data: { email?: string; phone?: string }): Observable<any> {
-    return this.http.post(`${this.apiUrl}/resend-verification`, data)
+    return this.http.post(`${this.apiUrl}/auth/resend-verification`, data)
       .pipe(catchError(this.handleError));
   }
 
   logout(): Observable<any> {
     const headers = this.getAuthHeaders();
     
-    return this.http.post(`${this.apiUrl}/logout`, {}, { headers })
+    return this.http.post(`${this.apiUrl}/auth/logout`, {}, { headers })
       .pipe(
         tap(() => {
           this.clearAuthData();
@@ -366,18 +338,18 @@ export class AuthService {
     if (!token) return new BehaviorSubject(false).asObservable();
     
     const headers = this.getAuthHeaders();
-    return this.http.get<{ valid: boolean }>(`${this.apiUrl}/validate-token`, { headers })
+    return this.http.get<User>(`${this.apiUrl}/auth/me`, { headers })
       .pipe(
-        map(response => response.valid),
+        map(user => !!user),
         catchError(() => new BehaviorSubject(false).asObservable())
       );
   }
 
   // ==================== GESTION DU PROFIL ====================
 
-  getProfile(): Observable<User> {
+  getCurrentUser(): Observable<User> {
     const headers = this.getAuthHeaders();
-    return this.http.get<User>(`${this.apiUrl}/profile`, { headers })
+    return this.http.get<User>(`${this.apiUrl}/auth/me`, { headers })
       .pipe(
         tap(user => {
           this.currentUserSubject.next(user);
@@ -389,7 +361,7 @@ export class AuthService {
 
   updateProfile(profileData: Partial<User>): Observable<User> {
     const headers = this.getAuthHeaders();
-    return this.http.put<User>(`${this.apiUrl}/profile`, profileData, { headers })
+    return this.http.put<User>(`${this.apiUrl}/auth/profile`, profileData, { headers })
       .pipe(
         tap(user => {
           this.currentUserSubject.next(user);
@@ -401,11 +373,120 @@ export class AuthService {
 
   changePassword(data: { current_password: string; new_password: string }): Observable<any> {
     const headers = this.getAuthHeaders();
-    return this.http.post(`${this.apiUrl}/change-password`, data, { headers })
+    return this.http.post(`${this.apiUrl}/auth/change-password`, data, { headers })
       .pipe(catchError(this.handleError));
   }
 
-  // ==================== GESTION DES SIMULATIONS ====================
+  updatePreferences(preferences: any): Observable<any> {
+    const headers = this.getAuthHeaders();
+    return this.http.put<PreferencesResponse>(`${this.apiUrl}/auth/preferences`, preferences, { headers })
+      .pipe(
+        tap(response => {
+          if (this.currentUser) {
+            const responsePreferences = response.preferences || preferences;
+            const newUser = { 
+              ...this.currentUser, 
+              preferences: responsePreferences 
+            };
+            this.currentUserSubject.next(newUser);
+            localStorage.setItem('bamboo_user', JSON.stringify(newUser));
+          }
+        }),
+        catchError(this.handleError)
+      );
+  }
+
+  // Méthode pour mettre à jour les paramètres (settings)
+  updateSettings(settings: any): Observable<any> {
+    const headers = this.getAuthHeaders();
+    return this.http.put<PreferencesResponse>(`${this.apiUrl}/auth/preferences`, settings, { headers })
+      .pipe(
+        tap(response => {
+          if (this.currentUser) {
+            const newUser = { 
+              ...this.currentUser, 
+              settings: { 
+                ...(this.currentUser.settings || {}), 
+                ...settings 
+              },
+              preferences: {
+                ...(this.currentUser.preferences || {}),
+                ...settings,
+                ...(response.preferences || {})
+              }
+            };
+            this.currentUserSubject.next(newUser);
+            localStorage.setItem('bamboo_user', JSON.stringify(newUser));
+          }
+        }),
+        catchError(this.handleError)
+      );
+  }
+
+  // ==================== SESSIONS ====================
+
+  logoutAllDevices(): Observable<any> {
+    const headers = this.getAuthHeaders();
+    return this.http.post(`${this.apiUrl}/auth/logout-all`, {}, { headers })
+      .pipe(
+        tap(() => this.clearAuthData()),
+        catchError(error => {
+          this.clearAuthData();
+          return throwError(error);
+        })
+      );
+  }
+
+  getUserSessions(): Observable<any> {
+    const headers = this.getAuthHeaders();
+    return this.http.get(`${this.apiUrl}/auth/sessions`, { headers })
+      .pipe(catchError(this.handleError));
+  }
+
+  revokeSession(sessionId: string): Observable<any> {
+    const headers = this.getAuthHeaders();
+    return this.http.delete(`${this.apiUrl}/auth/sessions/${sessionId}`, { headers })
+      .pipe(catchError(this.handleError));
+  }
+
+  // ==================== RESET PASSWORD ====================
+
+  requestPasswordReset(data: { email?: string; phone?: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/forgot-password`, data)
+      .pipe(catchError(this.handleError));
+  }
+
+  confirmPasswordReset(data: { email?: string; phone?: string; code: string; new_password: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/auth/reset-password`, data)
+      .pipe(catchError(this.handleError));
+  }
+
+  // ==================== UTILITAIRES ====================
+
+  checkAvailability(email?: string, phone?: string): Observable<{ available: boolean; message: string }> {
+    const params: any = {};
+    if (email) params.email = email;
+    if (phone) params.phone = phone;
+
+    return this.http.get<{ available: boolean; message: string }>(`${this.apiUrl}/auth/check-availability`, { params })
+      .pipe(catchError(this.handleError));
+  }
+
+  // ==================== UPLOAD DOCUMENTS ====================
+
+  uploadDocument(file: File): Observable<any> {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${this.tokenSubject.value}`
+    });
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.http.post(`${this.apiUrl}/auth/documents/upload`, formData, { headers })
+      .pipe(catchError(this.handleError));
+  }
+
+  // ==================== SIMULATIONS ====================
 
   saveSimulation(data: { simulation_id: string; simulation_type: string; name: string }): Observable<any> {
     const headers = this.getAuthHeaders();
@@ -415,17 +496,39 @@ export class AuthService {
 
   getUserSimulations(): Observable<UserSimulation[]> {
     const headers = this.getAuthHeaders();
-    return this.http.get<UserSimulation[]>(`${this.apiUrl}/simulations`, { headers })
+    return this.http.get<UserSimulation[]>(`${this.apiUrl}/simulations/user`, { headers })
       .pipe(catchError(this.handleError));
   }
 
-  // ==================== GESTION DES DEMANDES ====================
+  getSimulation(id: string): Observable<UserSimulation> {
+    const headers = this.getAuthHeaders();
+    return this.http.get<UserSimulation>(`${this.apiUrl}/simulations/${id}`, { headers })
+      .pipe(catchError(this.handleError));
+  }
+
+  deleteSimulation(id: string): Observable<any> {
+    const headers = this.getAuthHeaders();
+    return this.http.delete(`${this.apiUrl}/simulations/${id}`, { headers })
+      .pipe(catchError(this.handleError));
+  }
+
+  downloadSimulation(id: string): Observable<Blob> {
+    const headers = this.getAuthHeaders();
+    return this.http.get(`${this.apiUrl}/simulations/${id}/download`, { 
+      headers, 
+      responseType: 'blob' 
+    }).pipe(catchError(this.handleError));
+  }
+
+  // ==================== APPLICATIONS ====================
 
   createCreditApplication(applicationData: any): Observable<any> {
     const headers = this.getAuthHeaders();
     return this.http.post(`${this.apiUrl}/applications/credit`, applicationData, { headers })
       .pipe(catchError(this.handleError));
   }
+
+  submitCreditApplication = this.createCreditApplication;
 
   createSavingsApplication(applicationData: any): Observable<any> {
     const headers = this.getAuthHeaders();
@@ -441,11 +544,31 @@ export class AuthService {
 
   getUserApplications(): Observable<UserApplication[]> {
     const headers = this.getAuthHeaders();
-    return this.http.get<UserApplication[]>(`${this.apiUrl}/applications`, { headers })
+    return this.http.get<UserApplication[]>(`${this.apiUrl}/applications/user`, { headers })
       .pipe(catchError(this.handleError));
   }
 
-  // ==================== GESTION DES NOTIFICATIONS ====================
+  getApplication(id: string): Observable<UserApplication> {
+    const headers = this.getAuthHeaders();
+    return this.http.get<UserApplication>(`${this.apiUrl}/applications/${id}`, { headers })
+      .pipe(catchError(this.handleError));
+  }
+
+  cancelApplication(id: string): Observable<any> {
+    const headers = this.getAuthHeaders();
+    return this.http.post(`${this.apiUrl}/applications/${id}/cancel`, {}, { headers })
+      .pipe(catchError(this.handleError));
+  }
+
+  downloadDocument(documentId: string): Observable<Blob> {
+    const headers = this.getAuthHeaders();
+    return this.http.get(`${this.apiUrl}/documents/${documentId}/download`, { 
+      headers, 
+      responseType: 'blob' 
+    }).pipe(catchError(this.handleError));
+  }
+
+  // ==================== NOTIFICATIONS ====================
 
   getNotifications(unreadOnly: boolean = false, limit: number = 50): Observable<UserNotification[]> {
     const headers = this.getAuthHeaders();
@@ -471,29 +594,28 @@ export class AuthService {
       .pipe(catchError(this.handleError));
   }
 
-  // ==================== RESET PASSWORD ====================
-
-  requestPasswordReset(data: { email?: string; phone?: string }): Observable<any> {
-    return this.http.post(`${this.apiUrl}/reset-password`, data)
+  getUserStats(): Observable<any> {
+    const headers = this.getAuthHeaders();
+    return this.http.get(`${this.apiUrl}/stats`, { headers })
       .pipe(catchError(this.handleError));
   }
 
-  confirmPasswordReset(data: { email?: string; phone?: string; code: string; new_password: string }): Observable<any> {
-    return this.http.post(`${this.apiUrl}/reset-password/confirm`, data)
-      .pipe(catchError(this.handleError));
+  // ==================== COMPTE ====================
+
+  deleteAccount(password: string): Observable<any> {
+    const headers = this.getAuthHeaders();
+    return this.http.delete(`${this.apiUrl}/auth/account`, { 
+      headers,
+      body: { password }
+    }).pipe(
+      tap(() => this.clearAuthData()),
+      catchError(this.handleError)
+    );
   }
 
-  // ==================== UPLOAD DOCUMENTS ====================
-
-  uploadDocument(file: File): Observable<any> {
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${this.tokenSubject.value}`
-    });
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    return this.http.post(`${this.apiUrl}/documents/upload`, formData, { headers })
+  requestDataDownload(): Observable<any> {
+    const headers = this.getAuthHeaders();
+    return this.http.post(`${this.apiUrl}/auth/data-export`, {}, { headers })
       .pipe(catchError(this.handleError));
   }
 
@@ -554,7 +676,8 @@ export class AuthService {
     } else {
       // Erreur côté serveur
       if (error.status === 401) {
-        this.logout().subscribe();
+        this.clearAuthData();
+        this.router.navigate(['/auth/login']);
         errorMessage = 'Session expirée, veuillez vous reconnecter';
       } else if (error.error?.detail) {
         errorMessage = error.error.detail;
@@ -574,6 +697,9 @@ export class AuthService {
           case 500:
             errorMessage = 'Erreur serveur';
             break;
+          case 0:
+            errorMessage = 'Impossible de se connecter au serveur';
+            break;
         }
       }
     }
@@ -582,14 +708,14 @@ export class AuthService {
     return throwError(() => new Error(errorMessage));
   };
 
-  // ==================== AUTO-REFRESH TOKEN (optionnel) ====================
+  // ==================== AUTO-REFRESH TOKEN ====================
 
   startTokenRefresh(): void {
-    // Rafraîchir le token toutes les 23h (si token expire dans 24h)
-    timer(0, 23 * 60 * 60 * 1000).pipe(
+    // Vérifier le token toutes les heures
+    timer(0, 60 * 60 * 1000).pipe(
       switchMap(() => this.verifyToken()),
       catchError(() => {
-        this.logout();
+        this.clearAuthData();
         return throwError('Token invalide');
       })
     ).subscribe();

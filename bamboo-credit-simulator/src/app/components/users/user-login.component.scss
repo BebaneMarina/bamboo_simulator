@@ -1,353 +1,829 @@
+// src/app/components/users/user-login.component.scss
+
+// Variables de couleurs
+$primary-green: #1a4d3a;
+$secondary-green: #2d5e4f;
+$accent-green: #3a7060;
+$light-green: #4a8471;
+$very-light-green: #e8f5f0;
+$success-green: #22c55e;
+$warning-amber: #f59e0b;
+$error-red: #ef4444;
+$info-blue: #3b82f6;
+
+// Variables d'UI
+$white: #ffffff;
+$gray-50: #f9fafb;
+$gray-100: #f3f4f6;
+$gray-200: #e5e7eb;
+$gray-300: #d1d5db;
+$gray-400: #9ca3af;
+$gray-500: #6b7280;
+$gray-600: #4b5563;
+$gray-700: #374151;
+$gray-800: #1f2937;
+$gray-900: #111827;
+
+// Variables de transition
+$transition-base: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+$transition-fast: all 0.2s ease;
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+// Mixins utiles
+@mixin button-hover($scale: 1.02) {
+  transform: translateY(-2px) scale($scale);
+  box-shadow: $shadow-lg;
+}
+
+@mixin input-focus {
+  outline: none;
+  border-color: $primary-green;
+  box-shadow: 0 0 0 3px rgba($primary-green, 0.1);
+}
+
+@mixin card-hover {
+  transform: translateY(-4px);
+  box-shadow: $shadow-lg;
+}
+
+// Container principal
 .auth-container {
   min-height: 100vh;
+  background: linear-gradient(135deg, $very-light-green 0%, $white 100%);
+  padding: 2rem 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--gray-50) 0%, #e8f5f0 100%);
-  padding: 20px;
+  position: relative;
+
+  // Pattern de fond subtil
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba($primary-green, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba($accent-green, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 40% 80%, rgba($light-green, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+  }
 }
 
+// Carte d'authentification
 .auth-card {
-  background: white;
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-lg);
-  max-width: 480px;
+  background: $white;
+  border-radius: 1.5rem;
+  box-shadow: $shadow-lg;
   width: 100%;
+  max-width: 450px;
+  position: relative;
+  z-index: 1;
   overflow: hidden;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba($white, 0.2);
+
+  // Effet de bordure animée
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, $primary-green 0%, $accent-green 50%, $light-green 100%);
+    background-size: 200% 100%;
+    animation: gradientShift 3s ease infinite;
+  }
 }
 
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+// Header de la carte
 .auth-header {
-  padding: 32px 32px 24px;
+  padding: 2rem 2rem 1rem;
   text-align: center;
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid $gray-100;
 
   .logo {
-    margin-bottom: 24px;
-    
+    margin-bottom: 2rem;
+
     h1 {
-      font-size: 2rem;
+      font-size: 2.5rem;
       font-weight: 800;
-      color: var(--primary-color);
-      margin: 0 0 4px;
+      color: $primary-green;
+      margin: 0 0 0.5rem;
+      background: linear-gradient(135deg, $primary-green 0%, $accent-green 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .tagline {
-      color: var(--gray-600);
-      font-size: 0.9rem;
+      color: $gray-600;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+  }
+
+  .auth-tabs {
+    display: flex;
+    background: $gray-50;
+    border-radius: 0.75rem;
+    padding: 0.25rem;
+
+    .tab-button {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      background: transparent;
+      border: none;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: $transition-base;
+      color: $gray-600;
+
+      &:hover {
+        color: $primary-green;
+        background: rgba($primary-green, 0.05);
+      }
+
+      &.active {
+        background: $white;
+        color: $primary-green;
+        box-shadow: $shadow-sm;
+        transform: translateY(-1px);
+      }
     }
   }
 }
 
-.auth-tabs {
-  display: flex;
-  gap: 8px;
-
-  .tab-button {
-    flex: 1;
-    padding: 12px 16px;
-    border: none;
-    background: var(--gray-100);
-    color: var(--gray-600);
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    transition: var(--transition);
-    font-weight: 500;
-
-    &.active {
-      background: var(--primary-color);
-      color: white;
-    }
-
-    &:hover:not(.active) {
-      background: var(--gray-200);
-    }
-  }
-}
-
+// Contenu principal
 .auth-content {
-  padding: 32px;
+  padding: 2rem;
 }
 
 .auth-form {
   h2 {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--gray-900);
-    margin: 0 0 8px;
+    color: $gray-900;
+    margin: 0 0 0.5rem;
+    text-align: center;
   }
 
   .form-subtitle {
-    color: var(--gray-600);
-    margin: 0 0 24px;
-    font-size: 0.9rem;
+    color: $gray-600;
+    font-size: 0.875rem;
+    text-align: center;
+    margin: 0 0 2rem;
+    line-height: 1.5;
   }
 }
 
+// Sélecteur de méthode de connexion
 .connection-method-toggle {
   display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  background: $gray-50;
+  border-radius: 0.75rem;
+  padding: 0.25rem;
 
   .method-button {
     flex: 1;
-    padding: 12px 16px;
-    border: 2px solid var(--gray-200);
-    background: white;
-    color: var(--gray-700);
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    transition: var(--transition);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    font-weight: 500;
+    gap: 0.5rem;
+    padding: 0.875rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: $transition-base;
+    color: $gray-600;
 
     .method-icon {
-      font-size: 1.2rem;
+      font-size: 1rem;
+      opacity: 0.7;
+    }
+
+    &:hover {
+      color: $primary-green;
+      background: rgba($primary-green, 0.05);
+      transform: translateY(-1px);
+
+      .method-icon {
+        opacity: 1;
+        transform: scale(1.1);
+      }
     }
 
     &.active {
-      border-color: var(--primary-color);
-      background: var(--primary-color);
-      color: white;
-    }
+      background: $white;
+      color: $primary-green;
+      box-shadow: $shadow-sm;
+      border: 1px solid rgba($primary-green, 0.2);
 
-    &:hover:not(.active) {
-      border-color: var(--gray-300);
+      .method-icon {
+        opacity: 1;
+      }
     }
   }
 }
 
+// Groupes de formulaires
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 1.5rem;
 
   label {
     display: block;
-    margin-bottom: 6px;
-    font-weight: 500;
-    color: var(--gray-700);
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: $gray-700;
+    margin-bottom: 0.5rem;
+  }
+
+  .form-input,
+  .form-select {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 2px solid $gray-200;
+    border-radius: 0.75rem;
+    font-size: 1rem;
+    transition: $transition-base;
+    background: $white;
+    color: $gray-900;
+
+    &:focus {
+      @include input-focus;
+    }
+
+    &:hover:not(:focus) {
+      border-color: $gray-300;
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+
+    &.error {
+      border-color: $error-red;
+      box-shadow: 0 0 0 3px rgba($error-red, 0.1);
+    }
+  }
+
+  .form-select {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+  }
+
+  .code-input {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.25rem;
+    padding: 1.25rem;
   }
 }
 
+// Lignes de formulaire (2 colonnes)
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
+  gap: 1rem;
 
-.form-input, .form-select {
-  width: 100%;
-  padding: 12px 16px;
-  border: 2px solid var(--gray-200);
-  border-radius: var(--border-radius);
-  font-size: 1rem;
-  transition: var(--transition);
-
-  &:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(26, 77, 58, 0.1);
-  }
-
-  &.error {
-    border-color: var(--error-color);
-  }
-
-  &::placeholder {
-    color: var(--gray-400);
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+    gap: 0;
   }
 }
 
+// Container de mot de passe avec toggle
 .password-input-container {
   position: relative;
 
+  .form-input {
+    padding-right: 3rem;
+  }
+
   .password-toggle {
     position: absolute;
-    right: 12px;
+    right: 0.75rem;
     top: 50%;
     transform: translateY(-50%);
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1.2rem;
-    color: var(--gray-400);
-    
+    font-size: 1.25rem;
+    padding: 0.25rem;
+    color: $gray-500;
+    transition: $transition-fast;
+    border-radius: 0.25rem;
+
     &:hover {
-      color: var(--gray-600);
+      color: $primary-green;
+      background: rgba($primary-green, 0.05);
     }
   }
 }
 
+// Indicateur de force du mot de passe
 .password-strength {
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  margin-top: 0.5rem;
 
   .strength-bar {
-    flex: 1;
     height: 4px;
     border-radius: 2px;
-    background: var(--gray-200);
-    position: relative;
-    overflow: hidden;
+    margin-bottom: 0.25rem;
+    transition: $transition-base;
 
-    &::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0;
-      height: 100%;
-      transition: width 0.3s ease;
-    }
-
-    &.very-weak::after {
+    &.very-weak {
       width: 20%;
-      background: var(--error-color);
+      background: $error-red;
     }
 
-    &.weak::after {
+    &.weak {
       width: 40%;
-      background: #ff6b6b;
+      background: #f97316;
     }
 
-    &.fair::after {
+    &.fair {
       width: 60%;
-      background: var(--warning-color);
+      background: $warning-amber;
     }
 
-    &.good::after {
+    &.good {
       width: 80%;
-      background: #4ecdc4;
+      background: #84cc16;
     }
 
-    &.strong::after {
+    &.strong {
       width: 100%;
-      background: var(--success-color);
+      background: $success-green;
     }
   }
 
   .strength-text {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 500;
-    min-width: 80px;
+
+    &.very-weak { color: $error-red; }
+    &.weak { color: #f97316; }
+    &.fair { color: $warning-amber; }
+    &.good { color: #84cc16; }
+    &.strong { color: $success-green; }
   }
 }
 
+// Messages d'erreur
+.error-message {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: $error-red;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  &::before {
+    content: '⚠';
+    font-size: 0.875rem;
+  }
+}
+
+// Options de formulaire
 .form-options {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin: 1.5rem 0;
 
-  .checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: var(--gray-600);
-
-    input[type="checkbox"] {
-      margin: 0;
-    }
-  }
-
-  .link-button {
-    background: none;
-    border: none;
-    color: var(--primary-color);
-    cursor: pointer;
-    font-size: 0.9rem;
-    text-decoration: underline;
-
-    &:hover {
-      color: var(--secondary-color);
-    }
+  @media (max-width: 640px) {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
   }
 }
 
+// Checkbox personnalisée
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: $gray-700;
+  user-select: none;
+
+  input[type="checkbox"] {
+    display: none;
+  }
+
+  .checkmark {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid $gray-300;
+    border-radius: 0.375rem;
+    margin-right: 0.75rem;
+    position: relative;
+    transition: $transition-base;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &::after {
+      content: '';
+      position: absolute;
+      width: 0.375rem;
+      height: 0.625rem;
+      border: solid $white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg) scale(0);
+      transition: transform 0.2s ease;
+    }
+  }
+
+  input[type="checkbox"]:checked + .checkmark {
+    background: $primary-green;
+    border-color: $primary-green;
+
+    &::after {
+      transform: rotate(45deg) scale(1);
+    }
+  }
+
+  &:hover .checkmark {
+    border-color: $primary-green;
+  }
+}
+
+// Boutons liens
+.link-button {
+  background: none;
+  border: none;
+  color: $primary-green;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: $transition-base;
+
+  &:hover {
+    text-decoration-color: $primary-green;
+    color: $accent-green;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    color: $gray-500;
+  }
+}
+
+// Boutons principaux
+.btn-primary {
+  width: 100%;
+  background: linear-gradient(135deg, $primary-green 0%, $secondary-green 100%);
+  color: $white;
+  border: none;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: $transition-base;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent 0%, rgba($white, 0.2) 50%, transparent 100%);
+    transition: left 0.6s ease;
+  }
+
+  &:hover:not(:disabled) {
+    @include button-hover;
+    background: linear-gradient(135deg, $secondary-green 0%, $primary-green 100%);
+
+    &::before {
+      left: 100%;
+    }
+  }
+
+  &:active {
+    transform: translateY(-1px) scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    background: $gray-400;
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba($primary-green, 0.2), $shadow-lg;
+  }
+}
+
+// Section optionnelle
 .optional-section {
-  margin-bottom: 24px;
+  margin: 1.5rem 0;
+  border: 1px solid $gray-200;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  transition: $transition-base;
+
+  &.expanded {
+    border-color: rgba($primary-green, 0.2);
+    background: rgba($very-light-green, 0.3);
+  }
 
   .toggle-optional {
     width: 100%;
-    padding: 12px;
-    background: var(--gray-50);
-    border: 1px solid var(--gray-200);
-    border-radius: var(--border-radius);
+    padding: 1rem;
+    background: $gray-50;
+    border: none;
     cursor: pointer;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: $gray-700;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    font-weight: 500;
-    color: var(--gray-700);
-    margin-bottom: 16px;
+    justify-content: space-between;
+    transition: $transition-base;
 
     &:hover {
-      background: var(--gray-100);
+      background: $gray-100;
+      color: $primary-green;
     }
 
     .toggle-icon {
-      transition: var(--transition);
+      transition: transform 0.3s ease;
     }
   }
 
-  &.expanded .toggle-optional .toggle-icon {
-    transform: rotate(180deg);
+  &.expanded .toggle-optional {
+    background: rgba($primary-green, 0.05);
+    color: $primary-green;
+
+    .toggle-icon {
+      transform: rotate(180deg);
+    }
   }
 
   .optional-fields {
-    display: none;
-    gap: 16px;
-    flex-direction: column;
-  }
-
-  &.expanded .optional-fields {
-    display: flex;
+    padding: 1.5rem;
+    background: $white;
+    border-top: 1px solid $gray-100;
+    animation: slideDown 0.3s ease;
   }
 }
 
-.code-input {
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: 0.5em;
-  padding: 16px;
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
+// Actions de vérification
 .verification-actions {
-  text-align: center;
-  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid $gray-100;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    gap: 1rem;
+  }
 }
 
-.error-message {
-  color: var(--error-color);
-  font-size: 0.8rem;
-  margin-top: 4px;
-  display: block;
+// Messages de statut
+.status-message {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &.success {
+    background: rgba($success-green, 0.1);
+    color: darken($success-green, 10%);
+    border: 1px solid rgba($success-green, 0.2);
+
+    &::before {
+      content: '✓';
+      font-weight: bold;
+    }
+  }
+
+  &.error {
+    background: rgba($error-red, 0.1);
+    color: darken($error-red, 10%);
+    border: 1px solid rgba($error-red, 0.2);
+
+    &::before {
+      content: '✕';
+      font-weight: bold;
+    }
+  }
+
+  &.info {
+    background: rgba($info-blue, 0.1);
+    color: darken($info-blue, 10%);
+    border: 1px solid rgba($info-blue, 0.2);
+
+    &::before {
+      content: 'ℹ';
+      font-weight: bold;
+    }
+  }
 }
 
-.auth-footer {
-  padding: 24px 32px;
-  background: var(--gray-50);
-  border-top: 1px solid var(--gray-200);
+// Responsive design
+@media (max-width: 640px) {
+  .auth-container {
+    padding: 1rem;
+  }
 
-  .terms-text {
-    font-size: 0.8rem;
-    color: var(--gray-500);
-    text-align: center;
-    margin: 0;
+  .auth-card {
+    max-width: 100%;
+    border-radius: 1rem;
+  }
 
-    a {
-      color: var(--primary-color);
-      text-decoration: none;
+  .auth-header,
+  .auth-content {
+    padding: 1.5rem;
+  }
 
-      &:hover {
-        text-decoration: underline;
+  .auth-header .logo h1 {
+    font-size: 2rem;
+  }
+
+  .auth-tabs .tab-button {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+
+  .form-input,
+  .form-select {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .btn-primary {
+    padding: 0.875rem;
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-header {
+    padding: 1rem 1rem 0.5rem;
+
+    .logo {
+      margin-bottom: 1.5rem;
+
+      h1 {
+        font-size: 1.75rem;
+      }
+
+      .tagline {
+        font-size: 0.8125rem;
       }
     }
+  }
+
+  .auth-content {
+    padding: 1rem;
+  }
+
+  .connection-method-toggle .method-button {
+    padding: 0.75rem;
+    font-size: 0.8125rem;
+    gap: 0.375rem;
+  }
+}
+
+// Améliorations d'accessibilité
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .auth-card::before {
+    animation: none !important;
+  }
+}
+
+// Focus visible pour l'accessibilité
+.btn-primary:focus-visible,
+.tab-button:focus-visible,
+.method-button:focus-visible,
+.toggle-optional:focus-visible {
+  outline: 2px solid $primary-green;
+  outline-offset: 2px;
+}
+
+// États de loading
+.auth-form.loading {
+  position: relative;
+  pointer-events: none;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba($white, 0.8);
+    backdrop-filter: blur(2px);
+    z-index: 10;
+    border-radius: 0.75rem;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2rem;
+    height: 2rem;
+    border: 3px solid $gray-200;
+    border-top-color: $primary-green;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 11;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+// États hover améliorés
+.form-input:hover:not(:focus):not(.error),
+.form-select:hover:not(:focus):not(.error) {
+  border-color: rgba($primary-green, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+// Animation d'apparition
+.auth-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
